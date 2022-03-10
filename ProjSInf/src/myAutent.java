@@ -1,9 +1,11 @@
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 public class myAutent {
     
@@ -44,7 +46,8 @@ public class myAutent {
             System.out.println("thread do server para cada cliente");
         }
 
-        public void run() {
+        @SuppressWarnings("unchecked")
+		public void run() {
             try {
                 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
@@ -54,9 +57,18 @@ public class myAutent {
                  try {
                 	 data = (HashMap<String, String>) in.readObject();
                 	 System.out.println(data);
+                	 
+                	 FileOutputStream outFile = new FileOutputStream("users.txt");
+                	 byte[] buffer = new byte[1024];
+                	 if (data.get("option").equals("c")) {
+                		 String line = data.get("option_args");
+                		 outFile.write(line.getBytes());
+                	 }
+                	 
                  } catch (ClassNotFoundException e) {
                 	 e.printStackTrace();
                  }
+                 
                  
                  out.close();
                  in.close();
