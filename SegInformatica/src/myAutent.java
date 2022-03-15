@@ -1,9 +1,16 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 
 public class myAutent {
@@ -57,12 +64,28 @@ public class myAutent {
 					data = (HashMap<String, String>) in.readObject();
 					System.out.println(data);
 					
-					FileOutputStream outFile = new FileOutputStream("users.txt");
-					byte[] buffer = new byte[1024];
-					if (data.get("option").equals("c")) {
-						String line = data.get("option_args");
-						outFile.write(line.getBytes());
+					File file = new File("users.txt");
+					FileInputStream inFile = new FileInputStream(file);
+					InputStreamReader reader = new InputStreamReader(inFile);
+					BufferedReader br = new BufferedReader(reader);
+					String linha = br.readLine();
+					while(linha != null) {
+						String[] linha_split = linha.split(";");
+						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
+							FileOutputStream outFile = new FileOutputStream(file,true);
+							
+							byte[] buffer = new byte[1024];
+							if (data.get("option").equals("c")) {
+								String line = "\r" + data.get("option_args");
+								String[] args = data.get("option_args").split(";");
+								new File("../clientFiles/" + args[0]).mkdirs();
+								outFile.write(line.getBytes());
+							}							
+						}
+						linha = br.readLine();
 					}
+					
+					
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				}
