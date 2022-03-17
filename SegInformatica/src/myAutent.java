@@ -74,13 +74,13 @@ public class myAutent {
 						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
 							FileOutputStream outFile = new FileOutputStream(file,true);
 							
-							byte[] buffer = new byte[1024];
 							if (data.get("option").equals("c")) {
 								String line = "\r" + data.get("option_args");
 								String[] args = data.get("option_args").split(";");
 								new File("../clientFiles/" + args[0]).mkdirs();
 								outFile.write(line.getBytes());
-							}							
+							}		
+							outFile.close();
 						}
 						linha = br.readLine();
 					}
