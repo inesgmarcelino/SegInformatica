@@ -1,3 +1,5 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,7 +13,9 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class myAutent {
 	
@@ -68,21 +72,56 @@ public class myAutent {
 					FileInputStream inFile = new FileInputStream(file);
 					InputStreamReader reader = new InputStreamReader(inFile);
 					BufferedReader br = new BufferedReader(reader);
-					String linha = br.readLine();
-					while(linha != null) {
-						String[] linha_split = linha.split(";");
+					String l = br.readLine();
+					
+					while (l != null) {
+						String[] linha_split = l.split(";");
 						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
 							FileOutputStream outFile = new FileOutputStream(file,true);
-							
+							out.writeObject("O cliente " + data.get("user") + " autenticado");
+							String[] args = data.get("option_args").split(";");
 							if (data.get("option").equals("c")) {
-								String line = "\r" + data.get("option_args");
-								String[] args = data.get("option_args").split(";");
-								new File("../clientFiles/" + args[0]).mkdirs();
-								outFile.write(line.getBytes());
-							}		
+								File f = new File("../server/" +  args[0]);
+								if (!f.exists()) {
+									String line = "\r" + data.get("option_args");
+									out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
+									new File("../server/" + args[0]).mkdirs();
+									outFile.write(line.getBytes());
+									out.writeObject("O utilizador " + args[1] + " foi criado");									
+								} else {
+									out.writeObject("O utilizador com ID " + args[0] + " já existe");
+									System.out.println("O utilizador com ID " + args[0] + " já existe");
+									System.exit(-1);
+								}
+							} else if (data.get("option").equals("e")) {
+								for (int i = 0; i < args.length; i++) {
+									FileOutputStream fclient = new FileOutputStream("../server/" + data.get("user") + "/" + args[i]);
+									BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
+									Long fSize = (Long) in.readObject();
+									byte[] buffer = new byte[1024];
+									
+									int n = 0;
+									int temp = fSize.intValue();
+									while(temp > 0) {
+										n = in.read(buffer, 0, (temp > 1024) ? 1024 : temp);
+										fclient.write(buffer, 0, n);
+										temp -= n;
+									}
+								}
+								//stuff
+								//pode ser mais q 1 ficheiro
+								out.writeObject("O ficheiro " + args[0] + " foi enviado para o servidor");
+							} else if (data.get("option").equals("l")) {
+								//stuff
+//								out.writeObject();
+							} else if (data.get("option").equals("d")) {
+								//stuff
+								//pode ser mais q 1 ficheiro
+								out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
+							}
 							outFile.close();
 						}
-						linha = br.readLine();
+						l = br.readLine();
 					}
 					
 					

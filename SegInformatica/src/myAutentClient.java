@@ -1,94 +1,113 @@
-import java.io.IOException;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Scanner;
 
 public class myAutentClient {
-    
-    public static void main(String[] args) {
-    	if (args.length >= 4) {
-    		Socket socket = null;
-    		try {
-    			String host = null;
-    			int port = 0;
-    			int user = 1; //default -> admin
-//    			String password = null;
-//    			List<String> newUser = new ArrayList<String>();
-//    			List<String> files = new ArrayList<String>();
-//    			char option = 0;
-    			HashMap<String,String> data = new HashMap<String,String>();
-    			
-    			//user and address
-        		if (args[0].equals("-u") && args[2].equals("-a")) {
-    				data.put("user", args[1]);
-    				user = Integer.parseInt(args[1]);
-    				host = args[3].substring(0, 9);
-    				port = Integer.parseInt(args[3].substring(10));
-    			} else {
-    				System.out.println("comando inválido");
-    				System.exit(-1);
-    			}
-        		
-        		socket = new Socket(host,port);
-    			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-    			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-        		
-        		if (args.length > 4) {
-        			//password
-        			if (args[4].equals("-p")) {
-        				data.put("password", args[5]);
-        				
-        				if (args[6].equals("-c") && user != 1) { //admin access only
-        					System.out.println("comando inválido");
-            				System.exit(-1);
-        				}
-        				
-        				data.put("option", args[6].substring(1));
-        				StringBuilder sb = new StringBuilder();
-        				for (int i = 7; i < args.length-1; i++) {
-        					sb.append(args[i]+";");
-        				}
-        				sb.append(args[args.length-1]);
-        				data.put("option_args", sb.toString());
-        				
-        			} else {
-        				Scanner scn = new Scanner(System.in);
-        				System.out.println("Insere a password: ");
-        				data.put("password",scn.nextLine());
-        				
-        				if (args[4].equals("-c") && user != 1) { //admin access only
-        					System.out.println("comando inválido");
-            				System.exit(-1);
-        				}
-        				
-        				data.put("option", args[4].substring(1));
-        				StringBuilder sb = new StringBuilder();
-        				for (int i = 5; i < args.length-1; i++) {
-        					sb.append(args[i]+";");
-        				}
-        				sb.append(args[args.length-1]);
-        				data.put("option_args", sb.toString());
-        		
-        			}
-        			
-        		}
-        		
-        		out.writeObject(data);
-        		out.close();
-        		in.close();
-        		socket.close();
-    			
-    		} catch (IOException e) {
-    			System.err.println(e.getMessage());
-    			System.exit(-1);
-    		}
-    	
-    	} else {
-    		System.out.println("comando inválido");
-    	}
-    }
+	static int port;
+	static String host;
+	
+	static int userId;
+	static String userPwd;
+	
+	static Socket clientSocket;
+	static ObjectInputStream in;
+	static ObjectOutputStream out;
+	
+	static HashMap<String,String> data = new HashMap<String,String>();
+	
+	public static void main(String[] args) {
+		if(args.length==0) { //sem comandos
+			System.out.println("Não foi escrito nenhum comando");
+			System.exit(0);
+		} 
+		try {
+			for (int i = 0; i < args.length; i++) {
+				if (args[i].charAt(0) == '-') {
+					
+					switch (args[i].charAt(1)) {
+					case 'u':
+						userId = Integer.parseInt(args[i+1]);
+						data.put("user", args[i+1]);
+						break;
+						
+					case 'a':
+						String[] address = args[i+1].split(":");
+						host = address[0];
+						data.put("ip", host);
+						port = Integer.parseInt(address[1]);
+						data.put("port", address[1]);
+						
+						clientSocket = new Socket (host,port);
+						in = new ObjectInputStream(clientSocket.getInputStream());
+		    			out = new ObjectOutputStream(clientSocket.getOutputStream());
+						break;
+						
+					case 'p':
+						userPwd = args[i+1];
+						data.put("password", userPwd);
+						break;
+					
+					default:
+						if (args[i].charAt(1) == 'c' && userId != 1) {
+							System.out.println("Comando inválido, acesso restrito");
+							System.exit(-1);
+							break;
+						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l') {
+							data.put("option", args[i].substring(1));
+							StringBuilder sb = new StringBuilder();
+							for (int j = i+1; j < args.length-1; j++) {
+								sb.append(args[j]+";");
+							}
+							sb.append(args[args.length-1]);
+							data.put("option_args", sb.toString());
+						} else if (userPwd == null) {
+							Scanner auth = new Scanner(System.in);
+							System.out.println("Inserir password: ");
+							userPwd = auth.nextLine();
+							data.put("password",userPwd);
+						}
+						break;
+					}
+					
+					
+					// e se houver comandos q n existem...
+				}
+			}
+			out.writeObject(data);
+			if (data.get("option").equals("e")) {
+				String[] files = data.get("option_args").split(";");
+				for (String file: files) {
+					File f = new File(file);
+					Long tam = f.length();
+					out.writeObject(tam);
+					
+					BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(file));
+					byte[] buffer = new byte[1024];
+					
+					int n;
+					while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
+						out.write(buffer,0,n);
+					}
+				}
+			}
+			while (in.available() == 0) { //só para ver as respostas
+				String response = (String) in.readObject();
+				System.out.println(response);
+				
+			}
+			out.close();
+			in.close();
+			clientSocket.close();
+			
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+	}
+
 }
