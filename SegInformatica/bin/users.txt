@@ -1,1 +1,1 @@
-1;Administrador;thepwd2;Teresa;tetebeta
+1;Administrador;thepwd

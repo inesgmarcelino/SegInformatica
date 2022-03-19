@@ -95,11 +95,11 @@ public class myAutentClient {
 					}
 				}
 			}
-			while (in.available() == 0) { //só para ver as respostas
-				String response = (String) in.readObject();
-				System.out.println(response);
-				
+			int count = (int) in.readObject();
+			for (int i = 0; i < count; i++) {
+				System.out.println((String) in.readObject());
 			}
+			
 			out.close();
 			in.close();
 			clientSocket.close();

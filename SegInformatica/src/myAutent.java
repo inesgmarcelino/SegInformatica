@@ -73,27 +73,27 @@ public class myAutent {
 					InputStreamReader reader = new InputStreamReader(inFile);
 					BufferedReader br = new BufferedReader(reader);
 					String l = br.readLine();
-					
 					while (l != null) {
 						String[] linha_split = l.split(";");
 						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
 							FileOutputStream outFile = new FileOutputStream(file,true);
-							out.writeObject("O cliente " + data.get("user") + " autenticado");
 							String[] args = data.get("option_args").split(";");
 							if (data.get("option").equals("c")) {
+								out.writeObject(2);
 								File f = new File("../server/" +  args[0]);
+								String line = "\r" + data.get("option_args");
+								out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 								if (!f.exists()) {
-									String line = "\r" + data.get("option_args");
-									out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 									new File("../server/" + args[0]).mkdirs();
 									outFile.write(line.getBytes());
-									out.writeObject("O utilizador " + args[1] + " foi criado");									
+									out.writeObject("O utilizador " + args[1] + " foi criado");	
 								} else {
 									out.writeObject("O utilizador com ID " + args[0] + " já existe");
 									System.out.println("O utilizador com ID " + args[0] + " já existe");
 									System.exit(-1);
 								}
 							} else if (data.get("option").equals("e")) {
+								out.writeObject(1);
 								for (int i = 0; i < args.length; i++) {
 									FileOutputStream fclient = new FileOutputStream("../server/" + data.get("user") + "/" + args[i]);
 									BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
@@ -112,9 +112,11 @@ public class myAutent {
 								//pode ser mais q 1 ficheiro
 								out.writeObject("O ficheiro " + args[0] + " foi enviado para o servidor");
 							} else if (data.get("option").equals("l")) {
+								out.writeObject(1);
 								//stuff
 //								out.writeObject();
 							} else if (data.get("option").equals("d")) {
+								out.writeObject(1);
 								//stuff
 								//pode ser mais q 1 ficheiro
 								out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
@@ -128,7 +130,6 @@ public class myAutent {
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				}
-				
 				out.close();
 				in.close();
 				socket.close();
