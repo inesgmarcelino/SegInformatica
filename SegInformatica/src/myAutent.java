@@ -89,37 +89,42 @@ public class myAutent {
 							if (data.get("option").equals("c")) {
 								out.writeObject(2);
 								File f = new File("../server/" +  args[0]);
+								File f2 = new File("../client/" + args[0]);
 								String line = "\r" + data.get("option_args");
 								out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
-								if (!f.exists()) {
+								if (!f.exists() && !f2.exists()) {
 									f.mkdirs();
+									f2.mkdirs();
 									outFile.write(line.getBytes());
 									out.writeObject("O utilizador " + args[1] + " foi criado");	
 								} else {
 									out.writeObject("O utilizador com ID " + args[0] + " já existe");
-									System.out.println("O utilizador com ID " + args[0] + " já existe");
 									System.exit(-1);
 								}
 							} else if (data.get("option").equals("e")) {
 								out.writeObject(1);
-								for (int i = 0; i < args.length; i++) {
+								for (String arg: args) {
 									out.flush();
-									FileOutputStream fclient = new FileOutputStream("../server/" + data.get("user") + "/" + args[i]);
-									BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
-									Long fSize = (Long) in.readObject();
-									System.out.println(fSize);
-									byte[] buffer = new byte[1024];
-									
-									int n = 0;
-									int temp = fSize.intValue();
-									while(temp > 0) {
-										n = in.read(buffer, 0, (temp > 1024) ? 1024 : temp);
-										fclient.write(buffer, 0, n);
-										temp -= n;
+									File f = new File("../server/" + data.get("user") + "/" + arg);
+									if (!f.exists()) {
+										FileOutputStream fclient = new FileOutputStream(f.getPath());
+										BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
+										Long fSize = (Long) in.readObject();
+										byte[] buffer = new byte[1024];
+										
+										int n = 0;
+										int temp = fSize.intValue();
+										while (temp > 0) {
+											n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
+											fclient.write(buffer,0,n);
+											temp -= n;
+										}
+									} else {
+										out.writeObject("O ficheiro " + arg + " já existe no servidor");
+										System.exit(-1);
 									}
 								}
-								//stuff
-								//pode ser mais q 1 ficheiro
+								
 								out.writeObject("O ficheiro " + args[0] + " foi enviado para o servidor");
 							} else if (data.get("option").equals("l")) {
 								out.writeObject(1);
@@ -138,9 +143,26 @@ public class myAutent {
 								
 								out.writeObject(sb.toString());
 							} else if (data.get("option").equals("d")) {
-								out.writeObject(1);
+								for (int i = 0; i < args.length; i++) {
+									out.flush();
+									for (String arg: args) {
+										File f = new File("../server/" +  data.get("user") + "/" + arg);
+										Long tam = f.length();
+										out.writeObject(tam);
+										
+										BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
+										byte[] buffer = new byte[1024];
+										
+										int n;
+										while ((n = fBuff.read(buffer, 0 , 1024)) > 0) {
+											out.write(buffer,0,n);
+										}
+									}
+									
+								}
 								//stuff
 								//pode ser mais q 1 ficheiro
+								out.writeObject(1);
 								out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
 							}
 							outFile.close();

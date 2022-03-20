@@ -24,4 +24,11 @@
     <fullyQualifiedTypeName name="java.io.BufferedInputStream"/>
     <fullyQualifiedTypeName name="java.io.FileInputStream"/>
     <fullyQualifiedTypeName name="java.io.BufferedOutputStream"/>
+    <fullyQualifiedTypeName name="java.nio.file.DirectoryStream"/>
+    <fullyQualifiedTypeName name="java.nio.file.attribute.BasicFileAttributes"/>
+    <fullyQualifiedTypeName name="java.util.Date"/>
+    <fullyQualifiedTypeName name="java.util.stream.Stream"/>
+    <fullyQualifiedTypeName name="java.util.stream.Collectors"/>
+    <fullyQualifiedTypeName name="java.text.SimpleDateFormat"/>
+    <fullyQualifiedTypeName name="java.text.DateFormat"/>
 </qualifiedTypeNameHistroy>

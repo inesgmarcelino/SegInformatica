@@ -1,6 +1,8 @@
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -68,7 +70,7 @@ public class myAutentClient {
 							data.put("option", args[i].substring(1));
 							StringBuilder sb = new StringBuilder();
 							for (int j = i+1; j < args.length-1; j++) {
-								if (sb.length() == 2) {
+								if (args.length - (i+1) == 4 && j == i+2) {
 									sb.append(args[j]+" ");
 								} else {
 									sb.append(args[j]+";");									
@@ -88,11 +90,11 @@ public class myAutentClient {
 			if (data.get("option").equals("e")) {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
-					File f = new File(file);
+					File f = new File("../client/" + data.get("user") + "/" + file);
 					Long tam = f.length();
 					out.writeObject(tam);
 					
-					BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(file));
+					BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
 					byte[] buffer = new byte[1024];
 					
 					int n;
@@ -101,9 +103,34 @@ public class myAutentClient {
 					}
 				}
 			}
+			
+			if (data.get("option").equals("d")) {
+				String[] files = data.get("option_args").split(";");
+				for (String file: files) {
+					out.flush();
+					File f = new File ("../client/" + data.get("user") + "/" + file);
+					if (!f.exists()) {
+						FileOutputStream fserver = new FileOutputStream(f.getPath());
+						BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
+						Long fSize = (Long) in.readObject();
+						byte[] buffer = new byte[1024];
+						
+						int n = 0;
+						int temp = fSize.intValue();
+						while (temp > 0) {
+							n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
+							fserver.write(buffer, 0, n);
+							temp -= n;
+						}
+					} else {
+						System.out.println("O ficheiro " + file + " já existe no cliente");
+					}
+				}
+			}
+			
 			int count = (int) in.readObject();
 			for (int i = 0; i < count; i++) {
-				System.out.println((String) in.readObject());
+				System.out.println((String) in.readObject());					
 			}
 			
 			out.close();
