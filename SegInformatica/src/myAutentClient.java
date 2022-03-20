@@ -53,6 +53,13 @@ public class myAutentClient {
 						break;
 					
 					default:
+						if (userPwd == null) {
+							Scanner auth = new Scanner(System.in);
+							System.out.println("Inserir password: ");
+							userPwd = auth.nextLine();
+							data.put("password",userPwd);
+						}
+						
 						if (args[i].charAt(1) == 'c' && userId != 1) {
 							System.out.println("Comando inválido, acesso restrito");
 							System.exit(-1);
@@ -61,15 +68,14 @@ public class myAutentClient {
 							data.put("option", args[i].substring(1));
 							StringBuilder sb = new StringBuilder();
 							for (int j = i+1; j < args.length-1; j++) {
-								sb.append(args[j]+";");
+								if (sb.length() == 2) {
+									sb.append(args[j]+" ");
+								} else {
+									sb.append(args[j]+";");									
+								}
 							}
 							sb.append(args[args.length-1]);
 							data.put("option_args", sb.toString());
-						} else if (userPwd == null) {
-							Scanner auth = new Scanner(System.in);
-							System.out.println("Inserir password: ");
-							userPwd = auth.nextLine();
-							data.put("password",userPwd);
 						}
 						break;
 					}

@@ -10,12 +10,20 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class myAutent {
 	
@@ -84,7 +92,7 @@ public class myAutent {
 								String line = "\r" + data.get("option_args");
 								out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 								if (!f.exists()) {
-									new File("../server/" + args[0]).mkdirs();
+									f.mkdirs();
 									outFile.write(line.getBytes());
 									out.writeObject("O utilizador " + args[1] + " foi criado");	
 								} else {
@@ -95,9 +103,11 @@ public class myAutent {
 							} else if (data.get("option").equals("e")) {
 								out.writeObject(1);
 								for (int i = 0; i < args.length; i++) {
+									out.flush();
 									FileOutputStream fclient = new FileOutputStream("../server/" + data.get("user") + "/" + args[i]);
 									BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
 									Long fSize = (Long) in.readObject();
+									System.out.println(fSize);
 									byte[] buffer = new byte[1024];
 									
 									int n = 0;
@@ -113,8 +123,20 @@ public class myAutent {
 								out.writeObject("O ficheiro " + args[0] + " foi enviado para o servidor");
 							} else if (data.get("option").equals("l")) {
 								out.writeObject(1);
-								//stuff
-//								out.writeObject();
+								StringBuilder sb = new StringBuilder();
+								File path = new File("../server/" +  data.get("user"));
+								for (File f: path.listFiles()) {
+									Path p = Paths.get(f.getPath());
+									BasicFileAttributes at = Files.readAttributes(p, BasicFileAttributes.class);
+									String info = at.lastModifiedTime().toString();
+									String date = info.substring(8, 10) + "/" + info.substring(5, 7) + "/" + info.substring(0, 4);
+									String hour = info.substring(11, 16);
+									sb.append(date + "  " + hour + "  " + p.getFileName());
+									sb.append("\n");
+								}
+								sb.delete(sb.length()-1, sb.length());
+								
+								out.writeObject(sb.toString());
 							} else if (data.get("option").equals("d")) {
 								out.writeObject(1);
 								//stuff
