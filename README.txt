@@ -1,4 +1,4 @@
-# ProjSInf
+# ProjSInf - Projeto 1 e Projeto 2
 
 comandos:
 java myAutentClient -u 1 -a ip:23456 -p badpwd -c 2 Jose test
