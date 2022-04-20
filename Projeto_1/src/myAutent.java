@@ -33,34 +33,19 @@ public class myAutent {
 	public static void main(String[] args) {
 		System.out.println("Servidor: main");
 		
-		try {
-			// Scanner pwd = new Scanner(System.in);
-			
-			File usersFile = new File("Projeto_1/src/users.txt"); //-> Cria ficheiro
-			
-			System.out.println(usersFile.getAbsolutePath());
-			
-			FileReader fr = new FileReader(usersFile); //-> Le ficheiro
-			BufferedReader br = new BufferedReader(fr);  //-> Buffered InputStream para os caracteres
-			StringBuffer sb = new StringBuffer();
-			String line;
-			
-			while((line = br.readLine()) != null) {
-				sb.append(line);
-				sb.append("\n");
-			}
-			
-			fr.close();
-			System.out.println("Linhas: ");
-			System.out.println(sb.toString());
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-			
-		}
+		Scanner scan = new Scanner(System.in);
+		System.out.print("Admin password: ");
 		
-		myAutent server = new myAutent();
-		server.startServer();
+		String pwd = scan.next();
+		
+		if(pwd.equals("badpwd")) {
+			myAutent server = new myAutent();
+			server.startServer();
+		
+		} else {
+			System.out.println("\nCredenciais erradas.");
+			System.exit(-1);
+		}		
 	}
 	
 	public void startServer() {
