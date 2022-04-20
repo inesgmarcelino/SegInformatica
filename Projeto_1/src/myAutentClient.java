@@ -23,10 +23,13 @@ public class myAutentClient {
 	static HashMap<String,String> data = new HashMap<String,String>();
 	
 	public static void main(String[] args) {
+		
 		if(args.length==0) { //sem comandos
 			System.out.println("Não foi escrito nenhum comando");
 			System.exit(0);
+		
 		} 
+		
 		try {
 			for (int i = 0; i < args.length; i++) {
 				if (args[i].charAt(0) == '-') {
@@ -39,6 +42,7 @@ public class myAutentClient {
 						
 					case 'a':
 						String[] address = args[i+1].split(":");
+						
 						host = address[0];
 						data.put("ip", host);
 						port = Integer.parseInt(address[1]);
@@ -46,7 +50,7 @@ public class myAutentClient {
 						
 						clientSocket = new Socket (host,port);
 						in = new ObjectInputStream(clientSocket.getInputStream());
-		    			out = new ObjectOutputStream(clientSocket.getOutputStream());
+						out = new ObjectOutputStream(clientSocket.getOutputStream());
 						break;
 						
 					case 'p':
@@ -66,14 +70,19 @@ public class myAutentClient {
 							System.out.println("Comando inválido, acesso restrito");
 							System.exit(-1);
 							break;
+							
 						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l') {
 							data.put("option", args[i].substring(1));
 							StringBuilder sb = new StringBuilder();
+							
 							for (int j = i+1; j < args.length-1; j++) {
+								
 								if (args.length - (i+1) == 4 && j == i+2) {
 									sb.append(args[j]+" ");
+								
 								} else {
 									sb.append(args[j]+";");									
+								
 								}
 							}
 							sb.append(args[args.length-1]);
@@ -86,9 +95,11 @@ public class myAutentClient {
 					// e se houver comandos q n existem...
 				}
 			}
-			out.writeObject(data);
+			out.writeObject(data); 
+			
 			if (data.get("option").equals("e")) {
 				String[] files = data.get("option_args").split(";");
+				
 				for (String file: files) {
 					File f = new File("../client/" + data.get("user") + "/" + file);
 					Long tam = f.length();
@@ -98,6 +109,7 @@ public class myAutentClient {
 					byte[] buffer = new byte[1024];
 					
 					int n;
+					
 					while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
 						out.write(buffer,0,n);
 					}
@@ -106,9 +118,11 @@ public class myAutentClient {
 			
 			if (data.get("option").equals("d")) {
 				String[] files = data.get("option_args").split(";");
+				
 				for (String file: files) {
 					out.flush();
 					File f = new File ("../client/" + data.get("user") + "/" + file);
+					
 					if (!f.exists()) {
 						FileOutputStream fserver = new FileOutputStream(f.getPath());
 						BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
@@ -117,13 +131,16 @@ public class myAutentClient {
 						
 						int n = 0;
 						int temp = fSize.intValue();
+						
 						while (temp > 0) {
 							n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
 							fserver.write(buffer, 0, n);
 							temp -= n;
 						}
+						
 					} else {
 						System.out.println("O ficheiro " + file + " já existe no cliente");
+					
 					}
 				}
 			}

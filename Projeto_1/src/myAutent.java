@@ -3,7 +3,9 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -22,13 +24,41 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class myAutent {
 	
 	public static void main(String[] args) {
-		System.out.println("servidor: main");
+		System.out.println("Servidor: main");
+		
+		try {
+			// Scanner pwd = new Scanner(System.in);
+			
+			File usersFile = new File("Projeto_1/src/users.txt"); //-> Cria ficheiro
+			
+			System.out.println(usersFile.getAbsolutePath());
+			
+			FileReader fr = new FileReader(usersFile); //-> Le ficheiro
+			BufferedReader br = new BufferedReader(fr);  //-> Buffered InputStream para os caracteres
+			StringBuffer sb = new StringBuffer();
+			String line;
+			
+			while((line = br.readLine()) != null) {
+				sb.append(line);
+				sb.append("\n");
+			}
+			
+			fr.close();
+			System.out.println("Linhas: ");
+			System.out.println(sb.toString());
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+			
+		}
+		
 		myAutent server = new myAutent();
 		server.startServer();
 	}
@@ -39,9 +69,11 @@ public class myAutent {
 		try {
 			servSock = new ServerSocket(23456);
 			System.out.println("Servidor iniciado no port 23456");
+			
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
+			
 		}
 		
 		while (true) {
@@ -49,8 +81,10 @@ public class myAutent {
 				Socket client = servSock.accept();
 				ServerThread thread = new ServerThread(client);
 				thread.start();
+				
 			} catch (IOException e) {
 				e.printStackTrace();
+			
 			}
 		}
 		//servSock.close();
@@ -79,33 +113,43 @@ public class myAutent {
 					File file = new File("users.txt");
 					FileInputStream inFile = new FileInputStream(file);
 					InputStreamReader reader = new InputStreamReader(inFile);
+					
 					BufferedReader br = new BufferedReader(reader);
 					String l = br.readLine();
+					
 					while (l != null) {
 						String[] linha_split = l.split(";");
+						
 						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
 							FileOutputStream outFile = new FileOutputStream(file,true);
 							String[] args = data.get("option_args").split(";");
+							
 							if (data.get("option").equals("c")) {
 								out.writeObject(2);
 								File f = new File("../server/" +  args[0]);
 								File f2 = new File("../client/" + args[0]);
 								String line = "\r" + data.get("option_args");
 								out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
+								
 								if (!f.exists() && !f2.exists()) {
 									f.mkdirs();
 									f2.mkdirs();
 									outFile.write(line.getBytes());
 									out.writeObject("O utilizador " + args[1] + " foi criado");	
+								
 								} else {
 									out.writeObject("O utilizador com ID " + args[0] + " já existe");
 									System.exit(-1);
+				
 								}
+				
 							} else if (data.get("option").equals("e")) {
 								out.writeObject(1);
+								
 								for (String arg: args) {
 									out.flush();
 									File f = new File("../server/" + data.get("user") + "/" + arg);
+									
 									if (!f.exists()) {
 										FileOutputStream fclient = new FileOutputStream(f.getPath());
 										BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
@@ -119,17 +163,21 @@ public class myAutent {
 											fclient.write(buffer,0,n);
 											temp -= n;
 										}
+									
 									} else {
 										out.writeObject("O ficheiro " + arg + " já existe no servidor");
 										System.exit(-1);
+									
 									}
 								}
 								
 								out.writeObject("O ficheiro " + args[0] + " foi enviado para o servidor");
+							
 							} else if (data.get("option").equals("l")) {
 								out.writeObject(1);
 								StringBuilder sb = new StringBuilder();
 								File path = new File("../server/" +  data.get("user"));
+								
 								for (File f: path.listFiles()) {
 									Path p = Paths.get(f.getPath());
 									BasicFileAttributes at = Files.readAttributes(p, BasicFileAttributes.class);
@@ -139,12 +187,15 @@ public class myAutent {
 									sb.append(date + "  " + hour + "  " + p.getFileName());
 									sb.append("\n");
 								}
-								sb.delete(sb.length()-1, sb.length());
 								
+								sb.delete(sb.length()-1, sb.length());
 								out.writeObject(sb.toString());
+							
 							} else if (data.get("option").equals("d")) {
+							
 								for (int i = 0; i < args.length; i++) {
 									out.flush();
+								
 									for (String arg: args) {
 										File f = new File("../server/" +  data.get("user") + "/" + arg);
 										Long tam = f.length();
@@ -154,6 +205,7 @@ public class myAutent {
 										byte[] buffer = new byte[1024];
 										
 										int n;
+										
 										while ((n = fBuff.read(buffer, 0 , 1024)) > 0) {
 											out.write(buffer,0,n);
 										}
@@ -164,9 +216,12 @@ public class myAutent {
 								//pode ser mais q 1 ficheiro
 								out.writeObject(1);
 								out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
+							
 							}
+							
 							outFile.close();
 						}
+						
 						l = br.readLine();
 					}
 					
@@ -174,11 +229,14 @@ public class myAutent {
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				}
+				
 				out.close();
 				in.close();
 				socket.close();
+			
 			} catch (IOException e) {
 				e.printStackTrace();
+			
 			}
 		}
 	}
