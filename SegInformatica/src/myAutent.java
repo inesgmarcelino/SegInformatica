@@ -3,6 +3,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -22,15 +23,86 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class myAutent {
+	static int adminId = 0;
+	static String adminPwd;
+	static File file = new File("users.txt");
 	
 	public static void main(String[] args) {
-		System.out.println("servidor: main");
-		myAutent server = new myAutent();
-		server.startServer();
+		Scanner auth = new Scanner(System.in);
+		if (args.length == 0) {
+			System.out.println("Admin ID: ");
+			adminId = Integer.valueOf(auth.next());
+			System.out.println("Admin password: ");
+			adminPwd = auth.next();
+		} else {
+			for (int i = 0; i < args.length; i++) {
+				if (args[i].charAt(0) == '-') {
+					switch(args[i].charAt(1)) {
+					case 'u':
+						adminId = Integer.parseInt(args[i+1]);
+						break;
+					case 'p':
+						adminPwd = args[i+1];
+						break;
+					}
+				}
+			}
+			if (adminId == 0) {
+				System.out.println("Admin ID: ");
+				adminId = auth.nextInt();
+			} else if (adminPwd == null) {
+				System.out.println("Admin password: ");
+				adminPwd = auth.next();
+			}
+		}
+		
+		try {
+			BufferedReader br = usersRegistered();
+			String l = br.readLine();
+			if (l != null) {
+				String[] linha_split = l.split(";");
+				if (Integer.parseInt(linha_split[0]) == adminId && linha_split[1].equals("Administrador") && linha_split[2].equals(adminPwd)) {
+					System.out.println("servidor: main");
+					myAutent server = new myAutent();
+					server.startServer();					
+				} else {
+					System.out.println("Credenciais inválidas!");
+					System.exit(0);
+				}
+			} else {
+				String line = adminId + ";Administrador;" + adminPwd;
+				FileOutputStream outFile = new FileOutputStream(file,true);
+				outFile.write(line.getBytes());
+				outFile.close();
+				
+				System.out.println("servidor: main");
+				myAutent server = new myAutent();
+				server.startServer();
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public static BufferedReader usersRegistered() {
+		BufferedReader br = null;
+		try {
+			FileInputStream inFile = new FileInputStream(file);
+			InputStreamReader reader = new InputStreamReader(inFile);
+			br = new BufferedReader(reader);
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		return br;
 	}
 	
 	public void startServer() {
@@ -86,6 +158,7 @@ public class myAutent {
 						if (data.get("user").equals(linha_split[0]) && data.get("password").equals(linha_split[2])) {
 							FileOutputStream outFile = new FileOutputStream(file,true);
 							String[] args = data.get("option_args").split(";");
+							
 							if (data.get("option").equals("c")) {
 								out.writeObject(2);
 								File f = new File("../server/" +  args[0]);
