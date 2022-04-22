@@ -162,12 +162,10 @@ public class myAutent {
 							if (data.get("option").equals("c")) {
 								out.writeObject(2);
 								File f = new File("../server/" +  args[0]);
-								File f2 = new File("../client/" + args[0]);
 								String line = "\r" + data.get("option_args");
 								out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
-								if (!f.exists() && !f2.exists()) {
+								if (!f.exists()) {
 									f.mkdirs();
-									f2.mkdirs();
 									outFile.write(line.getBytes());
 									out.writeObject("O utilizador " + args[1] + " foi criado");	
 								} else {

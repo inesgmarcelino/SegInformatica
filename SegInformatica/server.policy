@@ -1,3 +1,4 @@
 grant codeBase "file:bin/*" {
 	permission java.net.SocketPermission "*:23456", "listen,resolve";
+	permission java.net.FilePermission "/", "read, write";
 };
