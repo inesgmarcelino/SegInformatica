@@ -53,6 +53,12 @@ public class myAutentClient {
 						userPwd = args[i+1];
 						data.put("password", userPwd);
 						break;
+						
+					case 's':
+						break;
+						
+					case 'v':
+						break;
 					
 					default:
 						if (userPwd == null) {
@@ -89,8 +95,9 @@ public class myAutentClient {
 			out.writeObject(data);
 			if (data.get("option").equals("e")) {
 				String[] files = data.get("option_args").split(";");
+				out.flush();
 				for (String file: files) {
-					File f = new File("../client/" + data.get("user") + "/" + file);
+					File f = new File("./src/" + file);
 					Long tam = f.length();
 					out.writeObject(tam);
 					
@@ -108,7 +115,7 @@ public class myAutentClient {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
 					out.flush();
-					File f = new File ("../client/" + data.get("user") + "/" + file);
+					File f = new File ("./src/" + file);
 					if (!f.exists()) {
 						FileOutputStream fserver = new FileOutputStream(f.getPath());
 						BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
@@ -122,6 +129,7 @@ public class myAutentClient {
 							fserver.write(buffer, 0, n);
 							temp -= n;
 						}
+						fserver.close();
 					} else {
 						System.out.println("O ficheiro " + file + " já existe no cliente");
 					}
