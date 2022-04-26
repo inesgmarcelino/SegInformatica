@@ -158,13 +158,22 @@ public class myAutent {
 								if (data.get("option").equals("c")) {
 									out.writeObject(2);
 									File f = new File("./server/" +  args[0]);
+									boolean valid = true;
+									while (l != null) {
+										linha_split = l.split(";");
+										if (linha_split[0].equals(args[0])) {
+											valid = false;
+										}
+										l = br.readLine();
+									}
+									
 									String line = "\r" + data.get("option_args");
 									out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
-									if (!f.exists()) {
+									if (!f.exists() & valid) {
 										f.mkdirs();
 										outFile.write(line.getBytes());
 										try {
-											Cifra.makeKeystore(args[0]);
+											Cifra.makeKeystore(args[0],args[2]);
 										} catch (NoSuchAlgorithmException | CertificateException
 												| NoSuchProviderException | OperatorCreationException
 												| KeyStoreException e) {
@@ -178,7 +187,6 @@ public class myAutent {
 										System.exit(-1);
 									}
 								} else if (data.get("option").equals("e")) {
-									out.writeObject(1);
 									for (String arg: args) {
 										out.flush();
 										File f = new File("./server/" + data.get("user") + "/" + arg);
@@ -197,7 +205,7 @@ public class myAutent {
 											}
 											fclient.close();
 										} else {
-											out.writeObject("O ficheiro " + arg + " já existe no servidor");
+											out.writeObject(1);											out.writeObject("O ficheiro " + arg + " já existe no servidor");
 											System.exit(-1);
 										}
 									}
@@ -219,6 +227,7 @@ public class myAutent {
 									sb.delete(sb.length()-1, sb.length());
 									
 									out.writeObject(sb.toString());
+									
 								} else if (data.get("option").equals("d")) {
 									for (int i = 0; i < args.length; i++) {
 										out.flush();
@@ -241,7 +250,15 @@ public class myAutent {
 									//pode ser mais q 1 ficheiro
 									out.writeObject(1);
 									out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
+									
+								} else if (data.get("option").equals("s")) {
+									byte[] hash = (byte[]) in.readObject();
+									System.out.println(hash);
+									
+									out.writeObject(1);
+									out.writeObject("hash enviado");
 								}
+								
 								outFile.close();
 								
 							} else {

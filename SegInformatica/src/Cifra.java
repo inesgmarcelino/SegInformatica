@@ -27,7 +27,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 public class Cifra {
 
-	public static void makeKeystore( String user)
+	public static void makeKeystore(String user, String userPwd)
 		      throws NoSuchAlgorithmException, CertificateException, NoSuchProviderException, OperatorCreationException, IOException, KeyStoreException {
 		
 //		gera chaves assimetricas RSA
@@ -64,8 +64,8 @@ public class Cifra {
 		Certificate chain [] = {certificate, certificate};
 		
 		// **** atencao ao alias do user e 'a password da chave privada
-		kstore.setKeyEntry("mm11", (Key)keyPair.getPrivate(), "pass".toCharArray(), chain);
+		kstore.setKeyEntry(userPwd, (Key)keyPair.getPrivate(), userPwd.toCharArray(), chain);
 		FileOutputStream kfile = new FileOutputStream("./server/" +user+ "/" +user+ ".keystore"); // keystore
-		kstore.store(kfile, "123456".toCharArray());
+		kstore.store(kfile, userPwd.toCharArray());
 	}
 }

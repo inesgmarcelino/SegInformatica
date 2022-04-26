@@ -6,6 +6,8 @@ import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -13,7 +15,7 @@ public class myAutentClient {
 	static int port;
 	static String host;
 	
-	static int userId;
+	static int userId = 0;
 	static String userPwd;
 	
 	static Socket clientSocket;
@@ -53,15 +55,9 @@ public class myAutentClient {
 						userPwd = args[i+1];
 						data.put("password", userPwd);
 						break;
-						
-					case 's':
-						break;
-						
-					case 'v':
-						break;
 					
 					default:
-						if (userPwd == null) {
+						if (userId > 0 && userPwd == null) {
 							Scanner auth = new Scanner(System.in);
 							System.out.println("Inserir password: ");
 							userPwd = auth.nextLine();
@@ -72,7 +68,10 @@ public class myAutentClient {
 							System.out.println("Comando inválido, acesso restrito");
 							System.exit(-1);
 							break;
-						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l') {
+						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || 
+								args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l' ||
+								args[i].charAt(1) == 's' || (userId == 0 && args[i].charAt(1) == 'v')) {
+							
 							data.put("option", args[i].substring(1));
 							StringBuilder sb = new StringBuilder();
 							for (int j = i+1; j < args.length-1; j++) {
@@ -133,6 +132,18 @@ public class myAutentClient {
 					} else {
 						System.out.println("O ficheiro " + file + " já existe no cliente");
 					}
+				}
+			}
+			
+			if (data.get("option").equals("s")) {
+				String[] files = data.get("option_args").split(";");
+				MessageDigest md = MessageDigest.getInstance("SHA");
+				for (String file: files) {
+					DigestInputStream dis = new DigestInputStream( new FileInputStream("./src/"+ file), md);
+					while (dis.read() != -1) {
+						md = dis.getMessageDigest();
+					}
+					out.writeObject(md.digest());
 				}
 			}
 			
