@@ -2,7 +2,9 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -92,23 +94,6 @@ public class myAutentClient {
 				}
 			}
 			out.writeObject(data);
-			if (data.get("option").equals("e")) {
-				String[] files = data.get("option_args").split(";");
-				out.flush();
-				for (String file: files) {
-					File f = new File("./src/" + file);
-					Long tam = f.length();
-					out.writeObject(tam);
-					
-					BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
-					byte[] buffer = new byte[1024];
-					
-					int n;
-					while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
-						out.write(buffer,0,n);
-					}
-				}
-			}
 			
 			if (data.get("option").equals("d")) {
 				String[] files = data.get("option_args").split(";");
@@ -116,23 +101,19 @@ public class myAutentClient {
 					out.flush();
 					File f = new File ("./src/" + file);
 					if (!f.exists()) {
-						FileOutputStream fserver = new FileOutputStream(f.getPath());
-						BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
-						Long fSize = (Long) in.readObject();
-						byte[] buffer = new byte[1024];
-						
-						int n = 0;
-						int temp = fSize.intValue();
-						while (temp > 0) {
-							n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
-							fserver.write(buffer, 0, n);
-							temp -= n;
-						}
-						fserver.close();
+						opcao_d(f);
 					} else {
 						System.out.println("O ficheiro " + file + " já existe no cliente");
 					}
 				}
+			}
+			
+			if (data.get("option").equals("e")) {
+				String[] files = data.get("option_args").split(";");
+				for (String file: files) {
+					opcao_e(file);
+				}
+				out.flush();
 			}
 			
 			if (data.get("option").equals("s")) {
@@ -160,6 +141,40 @@ public class myAutentClient {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
+	}
+	
+	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
+		FileOutputStream fserver = new FileOutputStream(f.getPath());
+		BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
+		Long fSize = (Long) in.readObject();
+		byte[] buffer = new byte[1024];
+		
+		int n = 0;
+		int temp = fSize.intValue();
+		while (temp > 0) {
+			n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
+			fserver.write(buffer, 0, n);
+			temp -= n;
+		}
+		fserver.close();
+	}
+	
+	public static void opcao_e(String file) throws IOException {
+		File f = new File("./src/" + file);
+		Long tam = f.length();
+		out.writeObject(tam);
+		
+		BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
+		byte[] buffer = new byte[1024];
+		
+		int n;
+		while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
+			out.write(buffer,0,n);
+		}
+	}
+	
+	public void opcao_v() {
+		
 	}
 
 }
