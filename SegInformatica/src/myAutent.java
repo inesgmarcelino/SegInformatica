@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -24,7 +25,11 @@ import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.time.Instant;
@@ -49,7 +54,7 @@ public class myAutent {
 	static String adminPwd;
 	static File file = new File("./src/users.txt");
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, NumberFormatException, NoSuchAlgorithmException {
 		Scanner auth = new Scanner(System.in);
 		if (args.length == 0) {
 			System.out.println("Admin ID: ");
@@ -83,7 +88,7 @@ public class myAutent {
 			String l = br.readLine();
 			if (l != null) {
 				String[] linha_split = l.split(";");
-				if (Integer.parseInt(linha_split[0]) == adminId && linha_split[1].equals("Administrador") && linha_split[2].equals(adminPwd)) {
+				if (Integer.parseInt(linha_split[0]) == adminId && linha_split[1].equals("Administrador") && checkPwd(linha_split[2], adminPwd)) {
 					System.out.println("servidor: main");
 					myAutent server = new myAutent();
 					server.startServer();					
@@ -92,7 +97,7 @@ public class myAutent {
 					System.exit(0);
 				}
 			} else {
-				String line = adminId + ";Administrador;" + adminPwd;
+				String line = adminId + ";Administrador;" + encrypt(adminPwd);;
 				FileOutputStream outFile = new FileOutputStream(file,true);
 				outFile.write(line.getBytes());
 				outFile.close();
@@ -120,6 +125,33 @@ public class myAutent {
 		}
 		
 		return br;
+	}
+	
+	public static String encrypt(String pwd) throws NoSuchAlgorithmException {
+		SecureRandom rand = new SecureRandom();
+		byte[] salt = new byte[16];
+		rand.nextBytes(salt);
+		
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		md.update(salt);
+		
+		byte[] bytes = md.digest(pwd.getBytes());
+		String encrypted = Base64.getEncoder().encodeToString(bytes) + "," + Base64.getEncoder().encodeToString(salt);
+		
+		return encrypted;
+	}
+	
+	public static boolean checkPwd(String crypt, String pwd) throws NoSuchAlgorithmException {
+		String[] crypted = crypt.split(",");
+		String salt = crypted[1];
+		byte[] salt_b = Base64.getDecoder().decode(salt);
+		
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		md.update(salt_b);
+		byte[] bytes = md.digest(pwd.getBytes());
+		
+		String pwd_crypted = Base64.getEncoder().encodeToString(bytes);
+		return pwd_crypted.equals(crypted[0]);
 	}
 	
 	public void startServer() {
@@ -173,7 +205,7 @@ public class myAutent {
 						String[] linha_split = l.split(";");
 						if (data.get("user").equals(linha_split[0])) {// && data.get("password").equals(linha_split[2])) {
 							
-							if (data.get("password").equals(linha_split[2])) {
+							if (checkPwd(linha_split[2], data.get("password"))) {
 								String[] args = data.get("option_args").split(";");
 								
 								if (data.get("option").equals("c")) {
@@ -199,15 +231,15 @@ public class myAutent {
 									List<String> existed = new ArrayList<String>();
 									List<String> created = new ArrayList<String>();
 									for (String arg: args) {
-										out.flush();
 										File f = new File("./server/" + data.get("user") + "/" + arg);
 										if (!f.exists()) {
-											opcao_e(f);
+											opcao_e(data.get("user"),f);
 											created.add(arg);
 										} else {
 											existed.add(arg);
 										}
 									}
+									out.flush();
 									
 									if (created.size() > 0) {
 										out.writeObject(created.size());
@@ -247,7 +279,7 @@ public class myAutent {
 					}
 					
 					
-				} catch (ClassNotFoundException | NoSuchAlgorithmException | OperatorCreationException | CertificateException | KeyStoreException e) {
+				} catch (ClassNotFoundException | NoSuchAlgorithmException | OperatorCreationException | CertificateException | KeyStoreException | UnrecoverableKeyException | InvalidKeyException | SignatureException e) {
 					e.printStackTrace();
 				}
 				out.close();
@@ -274,13 +306,14 @@ public class myAutent {
 				l = br.readLine();
 			}
 			
-			String line = "\r" + args[0] + ";" + args[1] + ";" + encrypt(args[2]);
+			String pwd_crypted = encrypt(args[2]);
+			String line = "\r" + args[0] + ";" + args[1] + ";" + pwd_crypted;
 			if (!f.exists() & valid) {
 				f.mkdirs();
 				FileOutputStream outFile = new FileOutputStream(file,true); //users.txt
 				outFile.write(line.getBytes());
 				outFile.close();
-				createKeystore(args[0],args[2]);
+				createKeystore(args[0], pwd_crypted);
 				return true;
 				
 			} else {
@@ -302,7 +335,59 @@ public class myAutent {
 			}
 		}
 		
-		public void opcao_e(File f) throws ClassNotFoundException, IOException {
+		public void sendToClient(String id, File f) throws IOException {
+			Long tam = f.length();
+			out.writeObject(tam);
+			
+			BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
+			byte[] buffer = new byte[1024];
+			
+			int n;
+			while ((n = fBuff.read(buffer, 0 , 1024)) > 0) {
+				out.write(buffer,0,n);
+			}
+		}
+		
+		public void opcao_e(String id, File f) 
+				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException {
+			
+			receiveFromClient(id,f);
+			
+			// getting pwd
+			BufferedReader br = usersRegistered();
+			String l = br.readLine();
+			String pwd = null;
+			while (l != null && pwd == null) {
+				String[] linha_split = l.split(";");
+				if (linha_split[0].equals(id)) {
+					pwd = linha_split[2];
+				}
+				l = br.readLine();
+			}
+			
+			// getting private key
+			KeyStore kstore = KeyStore.getInstance("JKS");
+			kstore.load(new FileInputStream("./server/"+id+"/"+id+".keystore"), pwd.toCharArray());
+			PrivateKey priv = (PrivateKey) kstore.getKey("user"+id, pwd.toCharArray());
+			
+			// signing
+			Signature s = Signature.getInstance("SHA256withRSA");
+			s.initSign(priv);
+			Long size = new Long(file.length());
+			
+			String name = f.getName().substring(0, f.getName().indexOf('.'));
+			FileOutputStream signing = new FileOutputStream("./server/"+id+"/"+name+".signed.user"+id);
+			ObjectOutputStream soos = new ObjectOutputStream(signing);
+			soos.writeObject(s.sign());
+			signing.close();
+			
+			// sending to client
+//			File ff = new File("./server/" + id + "/" + name+".signature");
+//			out.flush();
+//			sendToClient(id,ff);
+		}
+		
+		public void receiveFromClient(String id, File f) throws ClassNotFoundException, IOException {
 			FileOutputStream fclient = new FileOutputStream(f.getPath());
 			BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
 			Long fSize = (Long) in.readObject();
@@ -311,7 +396,6 @@ public class myAutent {
 			int n = 0;
 			int temp = fSize.intValue();
 			while (temp > 0) {
-				System.out.println(temp);
 				n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
 				fclient.write(buffer,0,n);
 				temp -= n;
@@ -344,22 +428,6 @@ public class myAutent {
 			
 		}
 		
-		public String encrypt(String pwd) 
-				throws NoSuchAlgorithmException {
-			
-			SecureRandom rand = new SecureRandom();
-			byte[] salt = new byte[16];
-			rand.nextBytes(salt);
-			
-			MessageDigest md = MessageDigest.getInstance("SHA");
-			md.update(salt);
-			
-			byte[] bytes = md.digest(pwd.getBytes());
-			String encrypted = Base64.getEncoder().encodeToString(bytes) + "," + Base64.getEncoder().encodeToString(salt);
-			
-			return encrypted;
-		}
-		
 		public void createKeystore(String id, String pwd) 
 				throws NoSuchAlgorithmException, OperatorCreationException, CertificateException, KeyStoreException, IOException {
 
@@ -388,16 +456,16 @@ public class myAutent {
 		    KeyStore kstore = KeyStore.getInstance("JKS");
 		    if ((new File("./server/" +id+ "/" +id+ ".keystore")).exists()){  // **** file da keystore
 				FileInputStream kfile1 = new FileInputStream("./server/" +id+ "/" +id+ ".keystore"); 
-				kstore.load(kfile1, "123456".toCharArray()); // **** password da keystore
+				kstore.load(kfile1, pwd.toCharArray()); // **** password da keystore
 				kfile1.close();
 		    } else {
-				kstore.load(null, null); // **** caso em que o file da keystore ainda n�o existe
+				kstore.load(null, null); // **** caso em que o file da keystore ainda nao existe
 		    }
 		    		
 			Certificate chain [] = {certificate, certificate};
 			
 			// **** atencao ao alias do user e 'a password da chave privada
-			kstore.setKeyEntry(pwd, (Key)keyPair.getPrivate(), pwd.toCharArray(), chain);
+			kstore.setKeyEntry("user"+id, (Key)keyPair.getPrivate(), pwd.toCharArray(), chain);
 			FileOutputStream kfile = new FileOutputStream("./server/" +id+ "/" +id+ ".keystore"); // keystore
 			kstore.store(kfile, pwd.toCharArray());
 		}

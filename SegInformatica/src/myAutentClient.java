@@ -69,7 +69,6 @@ public class myAutentClient {
 						if (args[i].charAt(1) == 'c' && userId != 1) {
 							System.out.println("Comando inválido, acesso restrito");
 							System.exit(-1);
-							break;
 						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || 
 								args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l' ||
 								args[i].charAt(1) == 's' || (userId == 0 && args[i].charAt(1) == 'v')) {
@@ -85,12 +84,12 @@ public class myAutentClient {
 							}
 							sb.append(args[args.length-1]);
 							data.put("option_args", sb.toString());
+						} else {
+							System.out.println("Comando inválido!");
+							System.exit(-1);
 						}
 						break;
 					}
-					
-					
-					// e se houver comandos q n existem...
 				}
 			}
 			out.writeObject(data);
@@ -144,6 +143,10 @@ public class myAutentClient {
 	}
 	
 	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
+		receiveFromServer(f);
+	}
+	
+	public static void receiveFromServer(File f) throws ClassNotFoundException, IOException {
 		FileOutputStream fserver = new FileOutputStream(f.getPath());
 		BufferedOutputStream fBuff = new BufferedOutputStream(fserver);
 		Long fSize = (Long) in.readObject();
@@ -159,8 +162,15 @@ public class myAutentClient {
 		fserver.close();
 	}
 	
-	public static void opcao_e(String file) throws IOException {
+	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
 		File f = new File("./src/" + file);
+		sendToServer(f);
+//		String name = file.substring(0, file.indexOf("."));
+//		File ff = new File ("./src/" + name + ".signature");
+//		receiveFromServer(ff);
+	}
+	
+	public static void sendToServer(File f) throws IOException {
 		Long tam = f.length();
 		out.writeObject(tam);
 		
