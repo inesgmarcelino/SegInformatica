@@ -336,7 +336,6 @@ public class myAutent {
 		
 		public void opcao_d(String id, String file, PrivateKey pk) throws IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 			File f = new File(mainPath +  id + "/" + file);
-			sendToClient(id, f);
 			
 			String name = file.substring(0,file.indexOf("."));
 			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
@@ -349,31 +348,25 @@ public class myAutent {
 				signing.close();
 			}
 			
-			// sending to client
-//			File ff = new File("./server/" + id + "/" + name+".signature");
-//			out.flush();
-//			sendToClient(id,ff);
+			sendToClient(id, f);
 		}
 		
 		public void opcao_e(String id, File f, PrivateKey pk) 
 				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException {
 			
 			receiveFromClient(id,f);
-			String pwd = getPassword(id);
 			
 			byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
 			Signature s = signing(bytes,pk);
-			
-			String name = f.getName().substring(0, f.getName().indexOf('.'));
-			FileOutputStream signing = new FileOutputStream(mainPath+id+"/"+name+".signed.user"+id);
-			ObjectOutputStream soos = new ObjectOutputStream(signing);
-			soos.writeObject(s.sign());
+			byte[] sign = s.sign();
+			out.writeObject(sign);
+
+			String name = f.getName().substring(0,f.getName().indexOf("."));
+			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
+			FileOutputStream signing = new FileOutputStream(fs.getPath());
+			ObjectOutputStream oos = new ObjectOutputStream(signing);
+			oos.writeObject(sign);
 			signing.close();
-			
-			// sending to client
-//			File ff = new File("./server/" + id + "/" + name+".signature");
-//			out.flush();
-//			sendToClient(id,ff);
 		}
 		
 		public String opcao_l(String id) throws IOException {

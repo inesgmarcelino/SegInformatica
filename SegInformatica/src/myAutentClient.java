@@ -147,18 +147,22 @@ public class myAutentClient {
 	
 	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
 		if (!f.exists()) {
-			receiveFromServer(f);			
+			receiveFromServer(f);	
+			System.out.println((String) in.readObject());
+		} else {
+			in.readObject(); //ignorar			
+			System.out.println("O ficheiro " + f.getName() + " já existe no cliente");
 		}
-		
-		// receber assinatura
+		String name = f.getName().substring(0, f.getName().indexOf("."));
+		receiveSignature(name);
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
 		File f = new File(mainPath + userId + "/" +  file);
 		sendToServer(f);
-//		String name = file.substring(0, file.indexOf("."));
-//		File ff = new File ((mainPath + "/" + userId + "/" +  name + ".signature");
-//		receiveFromServer(ff);
+		out.flush();
+		String name = file.substring(0, file.indexOf("."));
+		receiveSignature(name);
 	}
 	
 	public static void opcao_s(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
@@ -170,11 +174,7 @@ public class myAutentClient {
 		out.writeObject(md.digest());
 		
 		String name = file.substring(0, file.indexOf("."));
-		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  name + ".signed.user"+userId);
-		ObjectOutputStream oos = new ObjectOutputStream(signature);
-		byte[] s = (byte[]) in.readObject();
-		oos.writeObject(s);
-		signature.close();
+		receiveSignature(name);
 	}
 	
 	public void opcao_v() {
@@ -195,6 +195,14 @@ public class myAutentClient {
 			temp -= n;
 		}
 		fserver.close();
+	}
+	
+	public static void receiveSignature(String nameFile) throws IOException, ClassNotFoundException {
+		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  nameFile + ".signed.user"+userId);
+		ObjectOutputStream oos = new ObjectOutputStream(signature);
+		byte[] s = (byte[]) in.readObject();
+		oos.writeObject(s);
+		signature.close();
 	}
 	
 	public static void sendToServer(File f) throws IOException {
