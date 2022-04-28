@@ -222,20 +222,26 @@ public class myAutent {
 									}
 									
 								}  else if (data.get("option").equals("d")) {
-									out.writeObject(args.length);
+//									out.writeObject(args.length);
+									String pwd = getPassword(clientId);
+									PrivateKey priv = getPrivKey(clientId, pwd);
 									for (String arg: args) {
 										out.flush();
-										opcao_d(clientId, arg);
-										out.writeObject("O ficheiro " + args[0] + " foi recebido pelo cliente");
+										opcao_d(clientId, arg, priv);
+										out.writeObject("O ficheiro " + arg + " foi recebido pelo cliente");
 									}
 									
 								} else if (data.get("option").equals("e")) {
 									List<String> existed = new ArrayList<String>();
 									List<String> created = new ArrayList<String>();
+									
+									String pwd = getPassword(clientId);
+									PrivateKey priv = getPrivKey(clientId, pwd);
+									
 									for (String arg: args) {
 										File f = new File(mainPath + clientId + "/" + arg);
 										if (!f.exists()) {
-											opcao_e(clientId,f);
+											opcao_e(clientId,f, priv);
 											created.add(arg);
 										} else {
 											existed.add(arg);
@@ -263,11 +269,7 @@ public class myAutent {
 									
 								} else if (data.get("option").equals("s")) {
 									String pwd = getPassword(clientId);
-									// getting private key
-									KeyStore kstore = KeyStore.getInstance("JKS");
-									kstore.load(new FileInputStream(mainPath +clientId+"/"+clientId+".keystore"), pwd.toCharArray());
-									PrivateKey priv = (PrivateKey) kstore.getKey("user"+clientId, pwd.toCharArray());
-									
+									PrivateKey priv = getPrivKey(clientId, pwd);
 									for (String arg: args) {
 										opcao_s(clientId,arg, priv);		
 										out.writeObject("A síntese do ficheiro " + arg + " foi enviada para servidor");
@@ -332,55 +334,35 @@ public class myAutent {
 			}
 		}
 		
-		public void opcao_d(String id, String file) throws IOException {
+		public void opcao_d(String id, String file, PrivateKey pk) throws IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 			File f = new File(mainPath +  id + "/" + file);
 			sendToClient(id, f);
-		}
-		
-		public void sendToClient(String id, File f) throws IOException {
-			Long tam = f.length();
-			out.writeObject(tam);
 			
-			BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
-			byte[] buffer = new byte[1024];
-			
-			int n;
-			while ((n = fBuff.read(buffer, 0 , 1024)) > 0) {
-				out.write(buffer,0,n);
-			}
-		}
-		
-		public String getPassword(String id) throws IOException {
-			BufferedReader br = usersRegistered();
-			String l = br.readLine();
-			String pwd = null;
-			while (l != null && pwd == null) {
-				String[] linha_split = l.split(";");
-				if (linha_split[0].equals(id)) {
-					pwd = linha_split[2];
-				}
-				l = br.readLine();
+			String name = file.substring(0,file.indexOf("."));
+			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
+			if (!fs.exists()) {
+				byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
+				Signature s = signing(bytes,pk);
+				FileOutputStream signing = new FileOutputStream(fs.getPath());
+				ObjectOutputStream oos = new ObjectOutputStream(signing);
+				oos.writeObject(s.sign());
+				signing.close();
 			}
 			
-			return pwd;
+			// sending to client
+//			File ff = new File("./server/" + id + "/" + name+".signature");
+//			out.flush();
+//			sendToClient(id,ff);
 		}
 		
-		public void opcao_e(String id, File f) 
+		public void opcao_e(String id, File f, PrivateKey pk) 
 				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException {
 			
 			receiveFromClient(id,f);
 			String pwd = getPassword(id);
 			
-			// getting private key
-			KeyStore kstore = KeyStore.getInstance("JKS");
-			kstore.load(new FileInputStream(mainPath+id+"/"+id+".keystore"), pwd.toCharArray());
-			PrivateKey priv = (PrivateKey) kstore.getKey("user"+id, pwd.toCharArray());
-			
-			// signing
-			Signature s = Signature.getInstance("SHA256withRSA");
-			s.initSign(priv);
 			byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
-			s.update(bytes);
+			Signature s = signing(bytes,pk);
 			
 			String name = f.getName().substring(0, f.getName().indexOf('.'));
 			FileOutputStream signing = new FileOutputStream(mainPath+id+"/"+name+".signed.user"+id);
@@ -392,22 +374,6 @@ public class myAutent {
 //			File ff = new File("./server/" + id + "/" + name+".signature");
 //			out.flush();
 //			sendToClient(id,ff);
-		}
-		
-		public void receiveFromClient(String id, File f) throws ClassNotFoundException, IOException {
-			FileOutputStream fclient = new FileOutputStream(f.getPath());
-			BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
-			Long fSize = (Long) in.readObject();
-			byte[] buffer = new byte[1024];
-			
-			int n = 0;
-			int temp = fSize.intValue();
-			while (temp > 0) {
-				n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
-				fclient.write(buffer,0,n);
-				temp -= n;
-			}
-			fclient.close();
 		}
 		
 		public String opcao_l(String id) throws IOException {
@@ -432,14 +398,6 @@ public class myAutent {
 			Signature s = signing(hash,pk);
 			
 			out.writeObject(s.sign());
-		}
-		
-		public Signature signing(byte[] bytes, PrivateKey pk) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-			Signature s = Signature.getInstance("SHA256withRSA");
-			s.initSign(pk);
-			s.update(bytes);
-	
-			return s;
 		}
 		
 		public void opcao_v() {
@@ -486,6 +444,69 @@ public class myAutent {
 			kstore.setKeyEntry("user"+id, (Key)keyPair.getPrivate(), pwd.toCharArray(), chain);
 			FileOutputStream kfile = new FileOutputStream(mainPath +id+ "/" +id+ ".keystore"); // keystore
 			kstore.store(kfile, pwd.toCharArray());
+		}
+		
+		public String getPassword(String id) throws IOException {
+			BufferedReader br = usersRegistered();
+			String l = br.readLine();
+			String pwd = null;
+			while (l != null && pwd == null) {
+				String[] linha_split = l.split(";");
+				if (linha_split[0].equals(id)) {
+					pwd = linha_split[2];
+				}
+				l = br.readLine();
+			}
+			
+			return pwd;
+		}
+		
+		public PrivateKey getPrivKey(String id, String pwd) 
+				throws KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException {
+			
+			KeyStore kstore = KeyStore.getInstance("JKS");
+			kstore.load(new FileInputStream(mainPath +id+"/"+id+".keystore"), pwd.toCharArray());
+			PrivateKey priv = (PrivateKey) kstore.getKey("user"+id, pwd.toCharArray());
+			
+			return priv;
+		}
+		
+		public void receiveFromClient(String id, File f) throws ClassNotFoundException, IOException {
+			FileOutputStream fclient = new FileOutputStream(f.getPath());
+			BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
+			Long fSize = (Long) in.readObject();
+			byte[] buffer = new byte[1024];
+			
+			int n = 0;
+			int temp = fSize.intValue();
+			while (temp > 0) {
+				n = in.read(buffer, 0, (temp > 1024) ? 1024: temp);
+				fclient.write(buffer,0,n);
+				temp -= n;
+			}
+			fclient.close();
+		}
+		
+
+		public void sendToClient(String id, File f) throws IOException {
+			Long tam = f.length();
+			out.writeObject(tam);
+			
+			BufferedInputStream fBuff = new BufferedInputStream(new FileInputStream(f.getPath()));
+			byte[] buffer = new byte[1024];
+			
+			int n;
+			while ((n = fBuff.read(buffer, 0 , 1024)) > 0) {
+				out.write(buffer,0,n);
+			}
+		}
+		
+		public Signature signing(byte[] bytes, PrivateKey pk) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+			Signature s = Signature.getInstance("SHA256withRSA");
+			s.initSign(pk);
+			s.update(bytes);
+	
+			return s;
 		}
 	}
 	

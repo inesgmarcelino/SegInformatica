@@ -103,8 +103,9 @@ public class myAutentClient {
 				for (String file: files) {
 					out.flush();
 					File f = new File (mainPath + userId + "/" + file);
+					opcao_d(f);
 					if (!f.exists()) {
-						opcao_d(f);
+						System.out.println((String) in.readObject());
 					} else {
 						System.out.println("O ficheiro " + file + " já existe no cliente");
 					}
@@ -123,19 +124,7 @@ public class myAutentClient {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
 					out.flush();
-					MessageDigest md = MessageDigest.getInstance("SHA-256");
-					DigestInputStream dis = new DigestInputStream( new FileInputStream("./src/"+ file), md);
-					while (dis.read() != -1) {
-						md = dis.getMessageDigest();
-					}
-					out.writeObject(md.digest());
-					
-					String name = file.substring(0, file.indexOf("."));
-					FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  name + ".signed.user"+userId);
-					ObjectOutputStream oos = new ObjectOutputStream(signature);
-					byte[] s = (byte[]) in.readObject();
-					oos.writeObject(s);
-					signature.close();
+					opcao_s(file);
 					
 					System.out.println((String) in.readObject());
 				}
@@ -157,7 +146,39 @@ public class myAutentClient {
 	}
 	
 	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
-		receiveFromServer(f);
+		if (!f.exists()) {
+			receiveFromServer(f);			
+		}
+		
+		// receber assinatura
+	}
+	
+	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
+		File f = new File(mainPath + userId + "/" +  file);
+		sendToServer(f);
+//		String name = file.substring(0, file.indexOf("."));
+//		File ff = new File ((mainPath + "/" + userId + "/" +  name + ".signature");
+//		receiveFromServer(ff);
+	}
+	
+	public static void opcao_s(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + userId + "/" + file), md);
+		while (dis.read() != -1) {
+			md = dis.getMessageDigest();
+		}
+		out.writeObject(md.digest());
+		
+		String name = file.substring(0, file.indexOf("."));
+		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  name + ".signed.user"+userId);
+		ObjectOutputStream oos = new ObjectOutputStream(signature);
+		byte[] s = (byte[]) in.readObject();
+		oos.writeObject(s);
+		signature.close();
+	}
+	
+	public void opcao_v() {
+		
 	}
 	
 	public static void receiveFromServer(File f) throws ClassNotFoundException, IOException {
@@ -176,14 +197,6 @@ public class myAutentClient {
 		fserver.close();
 	}
 	
-	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
-		File f = new File(mainPath + userId + "/" +  file);
-		sendToServer(f);
-//		String name = file.substring(0, file.indexOf("."));
-//		File ff = new File ((mainPath + "/" + userId + "/" +  name + ".signature");
-//		receiveFromServer(ff);
-	}
-	
 	public static void sendToServer(File f) throws IOException {
 		Long tam = f.length();
 		out.writeObject(tam);
@@ -195,10 +208,6 @@ public class myAutentClient {
 		while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
 			out.write(buffer,0,n);
 		}
-	}
-	
-	public void opcao_v() {
-		
 	}
 
 }
