@@ -52,7 +52,8 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 public class myAutent {
 	static int adminId = 0;
 	static String adminPwd;
-	static File file = new File("./src/users.txt");
+	static String mainPath = "./server/";
+	static File file = new File(mainPath + "users.txt");
 	
 	public static void main(String[] args) throws IOException, NumberFormatException, NoSuchAlgorithmException {
 		Scanner auth = new Scanner(System.in);
@@ -232,7 +233,7 @@ public class myAutent {
 									List<String> existed = new ArrayList<String>();
 									List<String> created = new ArrayList<String>();
 									for (String arg: args) {
-										File f = new File("./server/" + clientId + "/" + arg);
+										File f = new File(mainPath + clientId + "/" + arg);
 										if (!f.exists()) {
 											opcao_e(clientId,f);
 											created.add(arg);
@@ -264,12 +265,15 @@ public class myAutent {
 									String pwd = getPassword(clientId);
 									// getting private key
 									KeyStore kstore = KeyStore.getInstance("JKS");
-									kstore.load(new FileInputStream("./server/"+clientId+"/"+clientId+".keystore"), pwd.toCharArray());
+									kstore.load(new FileInputStream(mainPath +clientId+"/"+clientId+".keystore"), pwd.toCharArray());
 									PrivateKey priv = (PrivateKey) kstore.getKey("user"+clientId, pwd.toCharArray());
 									
 									for (String arg: args) {
-										opcao_s(clientId,arg, priv);
+										opcao_s(clientId,arg, priv);		
+										out.writeObject("A síntese do ficheiro " + arg + " foi enviada para servidor");
 									}
+									out.writeObject(1);
+									out.writeObject("As assinaturas foram recebidas pelo cliente");
 									
 								} else if (data.get("option").equals("v")) {
 									
@@ -298,7 +302,8 @@ public class myAutent {
 		public boolean opcao_c(String[] args) 
 				throws IOException, NoSuchAlgorithmException, OperatorCreationException, CertificateException, KeyStoreException {
 			
-			File f = new File("./server/" +  args[0]);
+			File f = new File(mainPath  +  args[0]);
+			File f2 = new File("./client/" + args[0]);
 			boolean valid = true;
 			
 			BufferedReader br = usersRegistered();
@@ -313,8 +318,9 @@ public class myAutent {
 			
 			String pwd_crypted = encrypt(args[2]);
 			String line = "\r" + args[0] + ";" + args[1] + ";" + pwd_crypted;
-			if (!f.exists() & valid) {
+			if (!f.exists() & !f2.exists() & valid) {
 				f.mkdirs();
+				f2.mkdirs();
 				FileOutputStream outFile = new FileOutputStream(file,true); //users.txt
 				outFile.write(line.getBytes());
 				outFile.close();
@@ -327,7 +333,7 @@ public class myAutent {
 		}
 		
 		public void opcao_d(String id, String file) throws IOException {
-			File f = new File("./server/" +  id + "/" + file);
+			File f = new File(mainPath +  id + "/" + file);
 			sendToClient(id, f);
 		}
 		
@@ -367,7 +373,7 @@ public class myAutent {
 			
 			// getting private key
 			KeyStore kstore = KeyStore.getInstance("JKS");
-			kstore.load(new FileInputStream("./server/"+id+"/"+id+".keystore"), pwd.toCharArray());
+			kstore.load(new FileInputStream(mainPath+id+"/"+id+".keystore"), pwd.toCharArray());
 			PrivateKey priv = (PrivateKey) kstore.getKey("user"+id, pwd.toCharArray());
 			
 			// signing
@@ -377,7 +383,7 @@ public class myAutent {
 			s.update(bytes);
 			
 			String name = f.getName().substring(0, f.getName().indexOf('.'));
-			FileOutputStream signing = new FileOutputStream("./server/"+id+"/"+name+".signed.user"+id);
+			FileOutputStream signing = new FileOutputStream(mainPath+id+"/"+name+".signed.user"+id);
 			ObjectOutputStream soos = new ObjectOutputStream(signing);
 			soos.writeObject(s.sign());
 			signing.close();
@@ -406,7 +412,7 @@ public class myAutent {
 		
 		public String opcao_l(String id) throws IOException {
 			StringBuilder sb = new StringBuilder();
-			File path = new File("./server/" +  id);
+			File path = new File(mainPath +  id);
 			for (File f: path.listFiles()) {
 				Path p = Paths.get(f.getPath());
 				BasicFileAttributes at = Files.readAttributes(p, BasicFileAttributes.class);
@@ -466,8 +472,8 @@ public class myAutent {
 		    
 //		    guarda chave privada + certificado na keystore 
 		    KeyStore kstore = KeyStore.getInstance("JKS");
-		    if ((new File("./server/" +id+ "/" +id+ ".keystore")).exists()){  // **** file da keystore
-				FileInputStream kfile1 = new FileInputStream("./server/" +id+ "/" +id+ ".keystore"); 
+		    if ((new File(mainPath +id+ "/" +id+ ".keystore")).exists()){  // **** file da keystore
+				FileInputStream kfile1 = new FileInputStream(mainPath +id+ "/" +id+ ".keystore"); 
 				kstore.load(kfile1, pwd.toCharArray()); // **** password da keystore
 				kfile1.close();
 		    } else {
@@ -478,7 +484,7 @@ public class myAutent {
 			
 			// **** atencao ao alias do user e 'a password da chave privada
 			kstore.setKeyEntry("user"+id, (Key)keyPair.getPrivate(), pwd.toCharArray(), chain);
-			FileOutputStream kfile = new FileOutputStream("./server/" +id+ "/" +id+ ".keystore"); // keystore
+			FileOutputStream kfile = new FileOutputStream(mainPath +id+ "/" +id+ ".keystore"); // keystore
 			kstore.store(kfile, pwd.toCharArray());
 		}
 	}

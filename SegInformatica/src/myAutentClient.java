@@ -26,6 +26,8 @@ public class myAutentClient {
 	static ObjectInputStream in;
 	static ObjectOutputStream out;
 	
+	static String mainPath = "./client/";
+	
 	static HashMap<String,String> data = new HashMap<String,String>();
 	
 	public static void main(String[] args) {
@@ -100,7 +102,7 @@ public class myAutentClient {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
 					out.flush();
-					File f = new File ("./src/" + file);
+					File f = new File (mainPath + userId + "/" + file);
 					if (!f.exists()) {
 						opcao_d(f);
 					} else {
@@ -119,9 +121,9 @@ public class myAutentClient {
 			
 			if (data.get("option").equals("s")) {
 				String[] files = data.get("option_args").split(";");
-				MessageDigest md = MessageDigest.getInstance("SHA");
 				for (String file: files) {
 					out.flush();
+					MessageDigest md = MessageDigest.getInstance("SHA-256");
 					DigestInputStream dis = new DigestInputStream( new FileInputStream("./src/"+ file), md);
 					while (dis.read() != -1) {
 						md = dis.getMessageDigest();
@@ -129,11 +131,13 @@ public class myAutentClient {
 					out.writeObject(md.digest());
 					
 					String name = file.substring(0, file.indexOf("."));
-					FileOutputStream signature = new FileOutputStream("./src/" + name + ".signed.user"+userId);
+					FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  name + ".signed.user"+userId);
 					ObjectOutputStream oos = new ObjectOutputStream(signature);
 					byte[] s = (byte[]) in.readObject();
 					oos.writeObject(s);
 					signature.close();
+					
+					System.out.println((String) in.readObject());
 				}
 			}
 			
@@ -173,10 +177,10 @@ public class myAutentClient {
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
-		File f = new File("./src/" + file);
+		File f = new File(mainPath + userId + "/" +  file);
 		sendToServer(f);
 //		String name = file.substring(0, file.indexOf("."));
-//		File ff = new File ("./src/" + name + ".signature");
+//		File ff = new File ((mainPath + "/" + userId + "/" +  name + ".signature");
 //		receiveFromServer(ff);
 	}
 	
