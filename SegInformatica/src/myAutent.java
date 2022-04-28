@@ -228,7 +228,6 @@ public class myAutent {
 									for (String arg: args) {
 										out.flush();
 										opcao_d(clientId, arg, priv);
-										out.writeObject("O ficheiro " + arg + " foi recebido pelo cliente");
 									}
 									
 								} else if (data.get("option").equals("e")) {
@@ -336,19 +335,21 @@ public class myAutent {
 		
 		public void opcao_d(String id, String file, PrivateKey pk) throws IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 			File f = new File(mainPath +  id + "/" + file);
+			sendToClient(id, f);
+			
+			byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
+			Signature s = signing(bytes,pk);
+			byte[] sign = s.sign();
+			out.writeObject(sign);
 			
 			String name = file.substring(0,file.indexOf("."));
 			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
-			if (!fs.exists()) {
-				byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
-				Signature s = signing(bytes,pk);
-				FileOutputStream signing = new FileOutputStream(fs.getPath());
-				ObjectOutputStream oos = new ObjectOutputStream(signing);
-				oos.writeObject(s.sign());
-				signing.close();
-			}
+			FileOutputStream signing = new FileOutputStream(fs.getPath());
+			ObjectOutputStream oos = new ObjectOutputStream(signing);
+			oos.writeObject(sign);
+			signing.close();
 			
-			sendToClient(id, f);
+			out.writeObject("O ficheiro " + file + " foi recebido pelo cliente");
 		}
 		
 		public void opcao_e(String id, File f, PrivateKey pk) 

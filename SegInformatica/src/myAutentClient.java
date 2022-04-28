@@ -148,13 +148,14 @@ public class myAutentClient {
 	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
 		if (!f.exists()) {
 			receiveFromServer(f);	
-			System.out.println((String) in.readObject());
 		} else {
 			in.readObject(); //ignorar			
 			System.out.println("O ficheiro " + f.getName() + " já existe no cliente");
 		}
+		
 		String name = f.getName().substring(0, f.getName().indexOf("."));
 		receiveSignature(name);
+		System.out.println((String) in.readObject());
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
