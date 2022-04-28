@@ -10,6 +10,8 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -119,11 +121,19 @@ public class myAutentClient {
 				String[] files = data.get("option_args").split(";");
 				MessageDigest md = MessageDigest.getInstance("SHA");
 				for (String file: files) {
+					out.flush();
 					DigestInputStream dis = new DigestInputStream( new FileInputStream("./src/"+ file), md);
 					while (dis.read() != -1) {
 						md = dis.getMessageDigest();
 					}
 					out.writeObject(md.digest());
+					
+					String name = file.substring(0, file.indexOf("."));
+					FileOutputStream signature = new FileOutputStream("./src/" + name + ".signed.user"+userId);
+					ObjectOutputStream oos = new ObjectOutputStream(signature);
+					byte[] s = (byte[]) in.readObject();
+					oos.writeObject(s);
+					signature.close();
 				}
 			}
 			
