@@ -211,18 +211,9 @@ public class myAutent {
 								String[] args = data.get("option_args").split(";");
 								
 								if (data.get("option").equals("c")) {
-									out.writeObject(2);
-									out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
-									boolean valid = opcao_c(args);
-									if (valid) {
-										out.writeObject("O utilizador " + args[1] + " foi criado");
-									} else {
-										out.writeObject("O utilizador com ID " + args[0] + " já existe");
-										System.exit(-1);
-									}
+									opcao_c(args);
 									
 								}  else if (data.get("option").equals("d")) {
-//									out.writeObject(args.length);
 									String pwd = getPassword(clientId);
 									PrivateKey priv = getPrivKey(clientId, pwd);
 									for (String arg: args) {
@@ -248,20 +239,6 @@ public class myAutent {
 									}
 									out.flush();
 									
-									if (created.size() > 0) {
-										out.writeObject(created.size());
-										for (String f: created) {
-											out.writeObject("O ficheiro " + f + " foi enviado para o servidor");
-										}
-									}
-									
-									if (existed.size() > 0) {
-										out.writeObject(existed.size());		
-										for (String f: existed) {
-											out.writeObject("O ficheiro " + f + " já existe no servidor");										
-										}										
-									}
-									
 								} else if (data.get("option").equals("l")) {
 									out.writeObject(1);			
 									out.writeObject(opcao_l(clientId));
@@ -271,10 +248,8 @@ public class myAutent {
 									PrivateKey priv = getPrivKey(clientId, pwd);
 									for (String arg: args) {
 										opcao_s(clientId,arg, priv);		
-										out.writeObject("A síntese do ficheiro " + arg + " foi enviada para servidor");
 									}
-									out.writeObject(1);
-									out.writeObject("As assinaturas foram recebidas pelo cliente");
+									
 									
 								} else if (data.get("option").equals("v")) {
 									
@@ -300,8 +275,9 @@ public class myAutent {
 			}
 		}
 		
-		public boolean opcao_c(String[] args) 
+		public void opcao_c(String[] args) 
 				throws IOException, NoSuchAlgorithmException, OperatorCreationException, CertificateException, KeyStoreException {
+			out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 			
 			File f = new File(mainPath  +  args[0]);
 			File f2 = new File("./client/" + args[0]);
@@ -326,10 +302,11 @@ public class myAutent {
 				outFile.write(line.getBytes());
 				outFile.close();
 				createKeystore(args[0], pwd_crypted);
-				return true;
+				out.writeObject("O utilizador " + args[1] + " foi criado");
 				
 			} else {
-				return false;
+				out.writeObject("O utilizador com ID " + args[0] + " já existe");
+				System.exit(-1);
 			}
 		}
 		
@@ -348,14 +325,17 @@ public class myAutent {
 			ObjectOutputStream oos = new ObjectOutputStream(signing);
 			oos.writeObject(sign);
 			signing.close();
-			
-			out.writeObject("O ficheiro " + file + " foi recebido pelo cliente");
 		}
 		
 		public void opcao_e(String id, File f, PrivateKey pk) 
 				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException {
 			
-			receiveFromClient(id,f);
+			if (!f.exists()) {
+				receiveFromClient(id,f);
+				out.writeObject("O ficheiro " + f.getName() + " foi enviado para o servidor");
+			} else {
+				out.writeObject("O ficheiro " + f.getName() + " já existe no servidor");
+			}
 			
 			byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
 			Signature s = signing(bytes,pk);
@@ -389,6 +369,7 @@ public class myAutent {
 		
 		public void opcao_s(String id, String arg, PrivateKey pk) throws ClassNotFoundException, IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 			byte[] hash = (byte[]) in.readObject();
+			out.writeObject("A síntese do ficheiro " + arg + " foi enviada para servidor");
 			Signature s = signing(hash,pk);
 			
 			out.writeObject(s.sign());

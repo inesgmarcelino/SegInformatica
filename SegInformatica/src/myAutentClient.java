@@ -98,17 +98,17 @@ public class myAutentClient {
 			}
 			out.writeObject(data);
 			
+			if (data.get("option").equals("c")) {
+				System.out.println((String) in.readObject());
+				System.out.println((String) in.readObject());
+			}
+			
 			if (data.get("option").equals("d")) {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
 					out.flush();
 					File f = new File (mainPath + userId + "/" + file);
 					opcao_d(f);
-					if (!f.exists()) {
-						System.out.println((String) in.readObject());
-					} else {
-						System.out.println("O ficheiro " + file + " já existe no cliente");
-					}
 				}
 			}
 			
@@ -123,17 +123,15 @@ public class myAutentClient {
 			if (data.get("option").equals("s")) {
 				String[] files = data.get("option_args").split(";");
 				for (String file: files) {
-					out.flush();
 					opcao_s(file);
-					
-					System.out.println((String) in.readObject());
 				}
+				out.flush();
 			}
 			
-			int count = (int) in.readObject();
-			for (int i = 0; i < count; i++) {
-				System.out.println((String) in.readObject());					
-			}
+//			int count = (int) in.readObject();
+//			for (int i = 0; i < count; i++) {
+//				System.out.println((String) in.readObject());					
+//			}
 			
 			out.close();
 			in.close();
@@ -148,6 +146,7 @@ public class myAutentClient {
 	public static void opcao_d(File f) throws ClassNotFoundException, IOException {
 		if (!f.exists()) {
 			receiveFromServer(f);	
+			System.out.println("O ficheiro " + f.getName() + " foi recebido pelo cliente");
 		} else {
 			in.readObject(); //ignorar			
 			System.out.println("O ficheiro " + f.getName() + " já existe no cliente");
@@ -155,7 +154,6 @@ public class myAutentClient {
 		
 		String name = f.getName().substring(0, f.getName().indexOf("."));
 		receiveSignature(name);
-		System.out.println((String) in.readObject());
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
@@ -174,6 +172,7 @@ public class myAutentClient {
 		}
 		out.writeObject(md.digest());
 		
+		System.out.println((String) in.readObject());
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
 	}
@@ -199,14 +198,16 @@ public class myAutentClient {
 	}
 	
 	public static void receiveSignature(String nameFile) throws IOException, ClassNotFoundException {
-		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  nameFile + ".signed.user"+userId);
+		String nameSig = nameFile + ".signed.user"+userId;
+		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  nameSig);
 		ObjectOutputStream oos = new ObjectOutputStream(signature);
 		byte[] s = (byte[]) in.readObject();
 		oos.writeObject(s);
 		signature.close();
+		System.out.println("A assinatura " + nameSig + " foi recebida pelo cliente");
 	}
 	
-	public static void sendToServer(File f) throws IOException {
+	public static void sendToServer(File f) throws IOException, ClassNotFoundException {
 		Long tam = f.length();
 		out.writeObject(tam);
 		
@@ -217,6 +218,7 @@ public class myAutentClient {
 		while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
 			out.write(buffer,0,n);
 		}
+		System.out.println((String) in.readObject());
 	}
 
 }
