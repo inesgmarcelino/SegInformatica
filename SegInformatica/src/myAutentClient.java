@@ -98,40 +98,47 @@ public class myAutentClient {
 			}
 			out.writeObject(data);
 			
-			if (data.get("option").equals("c")) {
+			String bool = (String) in.readObject();
+			if (bool.equals("-1")) {
 				System.out.println((String) in.readObject());
-				System.out.println((String) in.readObject());
-			}
-			
-			if (data.get("option").equals("d")) {
-				String[] files = data.get("option_args").split(";");
-				for (String file: files) {
+				System.exit(-1);
+				
+			} else {
+				
+				if (data.get("option").equals("c")) {
+					System.out.println((String) in.readObject());
+					System.out.println((String) in.readObject());
+				}
+				
+				if (data.get("option").equals("d")) {
+					String[] files = data.get("option_args").split(";");
+					for (String file: files) {
+						out.flush();
+						File f = new File (mainPath + userId + "/" + file);
+						opcao_d(f);
+					}
+				}
+				
+				if (data.get("option").equals("e")) {
+					String[] files = data.get("option_args").split(";");
+					for (String file: files) {
+						opcao_e(file);
+					}
 					out.flush();
-					File f = new File (mainPath + userId + "/" + file);
-					opcao_d(f);
+				}
+				
+				if (data.get("option").equals("l")) {
+					System.out.println((String) in.readObject());
+				}
+				
+				if (data.get("option").equals("s")) {
+					String[] files = data.get("option_args").split(";");
+					for (String file: files) {
+						opcao_s(file);
+					}
+					out.flush();
 				}
 			}
-			
-			if (data.get("option").equals("e")) {
-				String[] files = data.get("option_args").split(";");
-				for (String file: files) {
-					opcao_e(file);
-				}
-				out.flush();
-			}
-			
-			if (data.get("option").equals("s")) {
-				String[] files = data.get("option_args").split(";");
-				for (String file: files) {
-					opcao_s(file);
-				}
-				out.flush();
-			}
-			
-//			int count = (int) in.readObject();
-//			for (int i = 0; i < count; i++) {
-//				System.out.println((String) in.readObject());					
-//			}
 			
 			out.close();
 			in.close();

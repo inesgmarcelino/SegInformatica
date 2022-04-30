@@ -24,7 +24,6 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.Signature;
@@ -35,11 +34,16 @@ import java.security.cert.CertificateException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
@@ -52,6 +56,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 public class myAutent {
 	static int adminId = 0;
 	static String adminPwd;
+	static String MACPwd;
 	static String mainPath = "./server/";
 	static File file = new File(mainPath + "users.txt");
 	
@@ -85,46 +90,51 @@ public class myAutent {
 		}
 		
 		try {
-			BufferedReader br = usersRegistered();
-			String l = br.readLine();
-			if (l != null) {
-				String[] linha_split = l.split(";");
-				if (Integer.parseInt(linha_split[0]) == adminId && linha_split[1].equals("Administrador") && checkPwd(linha_split[2], adminPwd)) {
-					System.out.println("servidor: main");
-					myAutent server = new myAutent();
-					server.startServer();					
+			boolean valid = false;
+			if (file.exists()) {
+				BufferedReader br = usersRegistered();
+				String l = br.readLine();
+				if (l != null) {
+					String[] linha_split = l.split(";");
+					if (Integer.parseInt(linha_split[0]) == adminId && linha_split[1].equals("Administrador") && checkPwd(linha_split[2], adminPwd)) {
+						valid = true;					
+					} else {
+						System.out.println("Credenciais inválidas!");
+						System.exit(0);
+					}
 				} else {
-					System.out.println("Credenciais inválidas!");
-					System.exit(0);
+					String line = adminId + ";Administrador;" + encrypt(adminPwd);
+					FileOutputStream outFile = new FileOutputStream(file,true);
+					outFile.write(line.getBytes());
+					outFile.close();
+					valid = true;
 				}
 			} else {
-				String line = adminId + ";Administrador;" + encrypt(adminPwd);;
-				FileOutputStream outFile = new FileOutputStream(file,true);
-				outFile.write(line.getBytes());
-				outFile.close();
-				
-				System.out.println("servidor: main");
+				String line = adminId + ";Administrador;" + encrypt(adminPwd);
+				FileOutputStream userstxt = new FileOutputStream(file.getPath());
+				userstxt.write(line.getBytes());
+				userstxt.close();
+				valid = true;
+			}
+			
+			if (valid) {
 				myAutent server = new myAutent();
 				server.startServer();
 			}
-		} catch (IOException e) {
+		} catch (IOException | InvalidKeyException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 	}
 	
-	public static BufferedReader usersRegistered() {
-		BufferedReader br = null;
-		try {
-			FileInputStream inFile = new FileInputStream(file);
-			InputStreamReader reader = new InputStreamReader(inFile);
-			br = new BufferedReader(reader);
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+	public static BufferedReader usersRegistered() throws InvalidKeyException, NoSuchAlgorithmException, IOException {
+		macExists();
 		
+		FileInputStream inFile = new FileInputStream(file);
+		InputStreamReader reader = new InputStreamReader(inFile);
+		BufferedReader br = new BufferedReader(reader);
+
 		return br;
 	}
 	
@@ -155,13 +165,88 @@ public class myAutent {
 		return pwd_crypted.equals(crypted[0]);
 	}
 	
+	public static void createMAC(String pwd, String f) throws NoSuchAlgorithmException, InvalidKeyException, IOException {
+		FileOutputStream macFile = new FileOutputStream(mainPath + f);
+		byte[] bytes = pwd.getBytes();
+		
+		SecretKey key = new SecretKeySpec(bytes, 0, bytes.length, "AES");
+		Mac mac = Mac.getInstance("HmacSHA256");
+		mac.init(key);
+		
+		FileInputStream userstxt = new FileInputStream(file.getPath());
+		BufferedInputStream bis = new BufferedInputStream(userstxt);
+		
+		byte[] buff = new byte[1024];
+		int x;
+		while ((x = bis.read(buff, 0, 1024)) > 0) {
+			mac.update(buff, 0, x);
+		}
+		
+		macFile.write(mac.doFinal());
+		bis.close();
+		userstxt.close();
+		macFile.close();
+	}
+	
+	public static boolean compareMACs(String mac1, String mac2) throws IOException {
+		Path macP1 = Paths.get(mainPath + mac1);
+		Path macP2 = Paths.get(mainPath + mac2);
+		if (Files.size(macP1) != Files.size(macP2)) {
+			return false;
+		} else if (Files.size(macP1) < 2048) {
+			return Arrays.equals(Files.readAllBytes(macP1), Files.readAllBytes(macP2));
+		}
+		
+		BufferedReader buff1 = Files.newBufferedReader(macP1);
+		BufferedReader buff2 = Files.newBufferedReader(macP2);
+		String line;
+		while ((line = buff1.readLine()) != null) {
+//			mt duvidoso
+			if (line != buff2.readLine()) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public static void macExists() throws InvalidKeyException, NoSuchAlgorithmException, IOException {
+		File mac = new File(mainPath + "users.mac");
+		if (!mac.exists()) {
+			Scanner in = new Scanner(System.in);
+			System.out.println("Pretende calcular o MAC? (y/n)");
+			String resp = in.next();
+			in.close();
+			if (resp.equals("y")) {
+				createMAC(adminPwd, "users.mac");
+				MACPwd = adminPwd;
+			} else {
+				System.exit(-1);
+			}
+		}
+	}
+	
 	public void startServer() {
 		ServerSocket servSock = null;
 		
 		try {
+			macExists();
+			createMAC(adminPwd, "users2.mac");
+			File mac2 = new File(mainPath + "users2.mac");
+			boolean compare = compareMACs("users.mac", "users2.mac");
+				
+			if (!compare) {
+				System.out.println("Não é possível iniciar o servidor.\nOs dados do ficheiros users.txt foram alterados sem permissão.");
+				mac2.delete();
+				System.exit(-1);
+			}
+			
+			MACPwd = adminPwd;
+			mac2.delete();
+			
 			servSock = new ServerSocket(23456);
-			System.out.println("Servidor iniciado no port 23456");
-		} catch (IOException e) {
+			System.out.println("Servidor iniciado no port 23456");	
+			
+		} catch (IOException | InvalidKeyException | NoSuchAlgorithmException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
@@ -204,9 +289,12 @@ public class myAutent {
 					
 					BufferedReader br = usersRegistered();
 					String l = br.readLine();
+					boolean idExists = false;
 					while (l != null) {
 						String[] linha_split = l.split(";");
-						if (clientId.equals(linha_split[0])) {// && data.get("password").equals(linha_split[2])) {
+						if (clientId.equals(linha_split[0])) {
+							idExists = true;
+							out.writeObject("0");
 							if (checkPwd(linha_split[2], data.get("password"))) {
 								String[] args = data.get("option_args").split(";");
 								
@@ -239,8 +327,7 @@ public class myAutent {
 									}
 									out.flush();
 									
-								} else if (data.get("option").equals("l")) {
-									out.writeObject(1);			
+								} else if (data.get("option").equals("l")) {		
 									out.writeObject(opcao_l(clientId));
 									
 								} else if (data.get("option").equals("s")) {
@@ -256,12 +343,18 @@ public class myAutent {
 								}
 								
 							} else {
-								out.writeObject(1);
+								out.writeObject("-1");
 								out.writeObject("Credenciais inválidas!");
 							}
+							break;
 						}
 						l = br.readLine();
 					}
+					if (!idExists) {
+						out.writeObject("-1");
+						out.writeObject("Não existe nenhum utilizador com o ID " + clientId);
+					}
+					out.flush();
 					
 					
 				} catch (ClassNotFoundException | NoSuchAlgorithmException | OperatorCreationException | CertificateException | KeyStoreException | UnrecoverableKeyException | InvalidKeyException | SignatureException e) {
@@ -276,7 +369,7 @@ public class myAutent {
 		}
 		
 		public void opcao_c(String[] args) 
-				throws IOException, NoSuchAlgorithmException, OperatorCreationException, CertificateException, KeyStoreException {
+				throws IOException, NoSuchAlgorithmException, OperatorCreationException, CertificateException, KeyStoreException, InvalidKeyException {
 			out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 			
 			File f = new File(mainPath  +  args[0]);
@@ -302,6 +395,7 @@ public class myAutent {
 				outFile.write(line.getBytes());
 				outFile.close();
 				createKeystore(args[0], pwd_crypted);
+				createMAC(adminPwd, "users.mac");
 				out.writeObject("O utilizador " + args[1] + " foi criado");
 				
 			} else {
@@ -421,7 +515,7 @@ public class myAutent {
 			kstore.store(kfile, pwd.toCharArray());
 		}
 		
-		public String getPassword(String id) throws IOException {
+		public String getPassword(String id) throws IOException, InvalidKeyException, NoSuchAlgorithmException {
 			BufferedReader br = usersRegistered();
 			String l = br.readLine();
 			String pwd = null;
