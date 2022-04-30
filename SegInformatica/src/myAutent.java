@@ -44,6 +44,7 @@ import java.util.Scanner;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.SSLServerSocketFactory;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
@@ -226,6 +227,9 @@ public class myAutent {
 	}
 	
 	public void startServer() {
+		System.setProperty("javax.net.ssl.keyStore", "server/keystores/keystore.server");
+		System.setProperty("javax.net.ssl.keyStorePassword", "123456");
+		
 		ServerSocket servSock = null;
 		
 		try {
@@ -243,7 +247,11 @@ public class myAutent {
 			MACPwd = adminPwd;
 			mac2.delete();
 			
-			servSock = new ServerSocket(23456);
+			//servSock = new ServerSocket(23456);
+			
+			servSock = ((SSLServerSocketFactory)SSLServerSocketFactory.getDefault()).createServerSocket(23456);
+
+			
 			System.out.println("Servidor iniciado no port 23456");	
 			
 		} catch (IOException | InvalidKeyException | NoSuchAlgorithmException e) {

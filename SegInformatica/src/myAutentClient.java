@@ -15,6 +15,8 @@ import java.security.Signature;
 import java.util.HashMap;
 import java.util.Scanner;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class myAutentClient {
 	static int port;
 	static String host;
@@ -31,6 +33,10 @@ public class myAutentClient {
 	static HashMap<String,String> data = new HashMap<String,String>();
 	
 	public static void main(String[] args) {
+		
+		System.setProperty("javax.net.ssl.trustStore","client/truststores/truststore.client");
+        System.setProperty("javax.net.ssl.trustStorePassword","123456");
+		
 		if(args.length==0) { //sem comandos
 			System.out.println("Não foi escrito nenhum comando");
 			System.exit(0);
@@ -52,7 +58,10 @@ public class myAutentClient {
 						port = Integer.parseInt(address[1]);
 						data.put("port", address[1]);
 						
-						clientSocket = new Socket (host,port);
+						//clientSocket = new Socket (host,port);
+						
+						clientSocket = ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(host, port);
+						
 						in = new ObjectInputStream(clientSocket.getInputStream());
 		    			out = new ObjectOutputStream(clientSocket.getOutputStream());
 						break;
