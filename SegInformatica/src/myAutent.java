@@ -205,7 +205,6 @@ public class myAutent {
 		BufferedReader buff2 = Files.newBufferedReader(macP2);
 		String line;
 		while ((line = buff1.readLine()) != null) {
-//			mt duvidoso
 			if (line != buff2.readLine()) {
 				return false;
 			}
@@ -327,10 +326,9 @@ public class myAutent {
 										for (String arg: args) {
 											File f = new File(mainPath + clientId + "/" + arg);
 											opcao_e(f, priv, pwd);
-											f.delete();
-											out.flush();
+											f.delete(); //doesnt work
 										}
-										
+										out.flush();
 										
 									} else if (data.get("option").equals("l")) {		
 										out.writeObject(opcao_l(clientId));
@@ -360,6 +358,7 @@ public class myAutent {
 						out.flush();
 						
 					} else {
+						out.writeObject("0");
 						String[] args = data.get("option_args").split(";");
 						if (data.get("option").equals("v")) {
 							for (String arg: args) {
@@ -431,13 +430,13 @@ public class myAutent {
 			ObjectOutputStream oos = new ObjectOutputStream(signing);
 			oos.writeObject(sign);
 			signing.close();
-			f.delete();
 		}
 		
 		public void opcao_e(File f, PrivateKey pk, String pwd) 
 				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException {
 
-			if (!f.exists()) {
+			File ff = new File(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".cif");
+			if (!ff.exists()) {
 				receiveFromClient(f);
 				cifrar(f,pwd);
 				out.writeObject("O ficheiro " + f.getName() + " foi enviado para o servidor");
@@ -484,19 +483,20 @@ public class myAutent {
 		}
 		
 		public void opcao_v(String file) throws ClassNotFoundException, IOException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, CertificateException, KeyStoreException, IllegalBlockSizeException {
+
 			byte[] hash = (byte[]) in.readObject();
 			out.writeObject("A síntese do ficheiro " + file + " foi enviada para servidor");
+
+			File f = new File(mainPath + file.substring(0, file.indexOf(".")) + ".signed");
+			receiveFromClient(f);
 			
-			String name = (String) in.readObject();
-			File f = new File(mainPath + name);
-//			receiveFromClient(f);
-			
-			FileInputStream inFile = new FileInputStream(f);
-			InputStreamReader reader = new InputStreamReader(inFile);
-			BufferedReader br = new BufferedReader(reader);
-			String l = br.readLine();
+//			FileInputStream inFile = new FileInputStream(f);
+//			InputStreamReader reader = new InputStreamReader(inFile);
+//			BufferedReader br = new BufferedReader(reader);
+//			String l = br.readLine();
 			
 			//falta a verificação
+			out.writeObject(false);
 		}
 		
 		public void cifrar(File f, String pwd) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, CertificateException, KeyStoreException, IllegalBlockSizeException {
@@ -529,7 +529,6 @@ public class myAutent {
 			Cipher c2 = Cipher.getInstance("RSA");
 			c2.init(Cipher.WRAP_MODE, cert);
 			byte[] keyB = c2.wrap(secret);
-			
 			FileOutputStream kos = new FileOutputStream(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".keywrapped");
 			kos.write(keyB);
 			kos.close();

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk-14.0.2">
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk-18.0.1">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/inesg/Downloads/bcprov-jdk14-171.jar"/>
-	<classpathentry kind="lib" path="C:/Users/inesg/Downloads/bcpkix-jdk14-171.jar"/>
-	<classpathentry kind="lib" path="C:/Users/inesg/Downloads/bcutil-jdk14-171.jar"/>
+	<classpathentry kind="lib" path="C:/Users/inesg/OneDrive/Ambiente de Trabalho/Faculdade/3º ano/2º semestre/Segurança Informática/Proj/ProjSInf/SegInformatica/lib/bcpkix-jdk18on-171.jar"/>
+	<classpathentry kind="lib" path="C:/Users/inesg/OneDrive/Ambiente de Trabalho/Faculdade/3º ano/2º semestre/Segurança Informática/Proj/ProjSInf/SegInformatica/lib/bcprov-jdk18on-171.jar"/>
+	<classpathentry kind="lib" path="C:/Users/inesg/OneDrive/Ambiente de Trabalho/Faculdade/3º ano/2º semestre/Segurança Informática/Proj/ProjSInf/SegInformatica/lib/bcutil-jdk18on-171.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

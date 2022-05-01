@@ -36,7 +36,7 @@ public class myAutentClient {
 		System.setProperty("javax.net.ssl.trustStorePassword","123456");
 		
 		if(args.length==0) { //sem comandos
-			System.out.println("Não foi escrito nenhum comando");
+			System.out.println("Nao foi escrito nenhum comando");
 			System.exit(0);
 		} 
 		try {
@@ -79,7 +79,7 @@ public class myAutentClient {
 						}
 						
 						if (args[i].charAt(1) == 'c' && userId != 1) {
-							System.out.println("Comando inválido, acesso restrito");
+							System.out.println("Comando invalido, acesso restrito");
 							System.exit(-1);
 						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || 
 								args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l' ||
@@ -97,7 +97,7 @@ public class myAutentClient {
 							sb.append(args[args.length-1]);
 							data.put("option_args", sb.toString());
 						} else {
-							System.out.println("Comando inválido!");
+							System.out.println("Comando invalido!");
 							System.exit(-1);
 						}
 						break;
@@ -131,8 +131,8 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						opcao_e(file);
+						out.flush();
 					}
-					out.flush();
 				}
 				
 				if (data.get("option").equals("l")) {
@@ -172,7 +172,7 @@ public class myAutentClient {
 			System.out.println("O ficheiro " + f.getName() + " foi recebido pelo cliente");
 		} else {
 			in.readObject(); //ignorar			
-			System.out.println("O ficheiro " + f.getName() + " já existe no cliente");
+			System.out.println("O ficheiro " + f.getName() + " ja existe no cliente");
 		}
 		
 		String name = f.getName().substring(0, f.getName().indexOf("."));
@@ -181,6 +181,7 @@ public class myAutentClient {
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
 		File f = new File(mainPath + file);
+		out.flush();
 		sendToServer(f);
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
@@ -209,9 +210,24 @@ public class myAutentClient {
 		out.writeObject(md.digest());
 		dis.close();
 		
-		String name = file.substring(0, file.indexOf(".")) + ".signed.user" + userId;
-		File f = new File(mainPath + name);
-		sendToServer(f);
+		File path = new File(mainPath);
+		boolean valid = false;
+		for (File f: path.listFiles()) {
+			if (!valid) {
+				if (f.getName().substring(0, f.getName().lastIndexOf(".")).equals(file.substring(0, file.indexOf("."))+".signed")) {
+					File ff = new File(f.getPath());
+					sendToServer(ff);
+					valid = true;
+				}					
+			}
+		}			
+		
+		boolean ok = (boolean) in.readObject();
+		if (ok) {
+			System.out.println("A verificaÃ§Ã£o da assinatura do ficheiro " + file + " foi bem sucedida");			
+		} else {
+			System.out.println("A assinatura do ficheiro " +  file + " nÃ£o Ã© vÃ¡lida");
+		}
 	}
 	
 	public static void receiveFromServer(File f) throws ClassNotFoundException, IOException {
@@ -251,6 +267,7 @@ public class myAutentClient {
 		while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
 			out.write(buffer,0,n);
 		}
+		out.flush();
 		System.out.println((String) in.readObject());
 	}
 
