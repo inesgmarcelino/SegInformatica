@@ -11,10 +11,8 @@ import java.net.Socket;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
 import java.util.HashMap;
 import java.util.Scanner;
-
 import javax.net.ssl.SSLSocketFactory;
 
 public class myAutentClient {
@@ -34,11 +32,11 @@ public class myAutentClient {
 	
 	public static void main(String[] args) {
 		
-		System.setProperty("javax.net.ssl.trustStore","client/truststores/truststore.client");
-        System.setProperty("javax.net.ssl.trustStorePassword","123456");
+		System.setProperty("javax.net.ssl.trustStore", mainPath + "truststores/truststore.client");
+		System.setProperty("javax.net.ssl.trustStorePassword","123456");
 		
 		if(args.length==0) { //sem comandos
-			System.out.println("Não foi escrito nenhum comando");
+			System.out.println("Nao foi escrito nenhum comando");
 			System.exit(0);
 		} 
 		try {
@@ -58,7 +56,7 @@ public class myAutentClient {
 						port = Integer.parseInt(address[1]);
 						data.put("port", address[1]);
 						
-						//clientSocket = new Socket (host,port);
+//						clientSocket = new Socket (host,port);
 						
 						clientSocket = ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(host, port);
 						
@@ -77,10 +75,11 @@ public class myAutentClient {
 							System.out.println("Inserir password: ");
 							userPwd = auth.nextLine();
 							data.put("password",userPwd);
+							auth.close();
 						}
 						
 						if (args[i].charAt(1) == 'c' && userId != 1) {
-							System.out.println("Comando inválido, acesso restrito");
+							System.out.println("Comando invalido, acesso restrito");
 							System.exit(-1);
 						} else if (args[i].charAt(1) == 'c' || args[i].charAt(1) == 'e' || 
 								args[i].charAt(1) == 'd' || args[i].charAt(1) == 'l' ||
@@ -98,7 +97,7 @@ public class myAutentClient {
 							sb.append(args[args.length-1]);
 							data.put("option_args", sb.toString());
 						} else {
-							System.out.println("Comando inválido!");
+							System.out.println("Comando invalido!");
 							System.exit(-1);
 						}
 						break;
@@ -123,7 +122,7 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						out.flush();
-						File f = new File (mainPath + userId + "/" + file);
+						File f = new File (mainPath + file);
 						opcao_d(f);
 					}
 				}
@@ -132,8 +131,8 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						opcao_e(file);
+						out.flush();
 					}
-					out.flush();
 				}
 				
 				if (data.get("option").equals("l")) {
@@ -144,6 +143,14 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						opcao_s(file);
+					}
+					out.flush();
+				}
+				
+				if (data.get("option").equals("v")) {
+					String[] files = data.get("option_args").split(";");
+					for (String file: files) {
+						opcao_v(file);
 					}
 					out.flush();
 				}
@@ -165,7 +172,7 @@ public class myAutentClient {
 			System.out.println("O ficheiro " + f.getName() + " foi recebido pelo cliente");
 		} else {
 			in.readObject(); //ignorar			
-			System.out.println("O ficheiro " + f.getName() + " já existe no cliente");
+			System.out.println("O ficheiro " + f.getName() + " ja existe no cliente");
 		}
 		
 		String name = f.getName().substring(0, f.getName().indexOf("."));
@@ -173,28 +180,54 @@ public class myAutentClient {
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
-		File f = new File(mainPath + userId + "/" +  file);
-		sendToServer(f);
+		File f = new File(mainPath + file);
 		out.flush();
+		sendToServer(f);
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
 	}
 	
 	public static void opcao_s(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
 		MessageDigest md = MessageDigest.getInstance("SHA-256");
-		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + userId + "/" + file), md);
+		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + file), md);
 		while (dis.read() != -1) {
 			md = dis.getMessageDigest();
 		}
 		out.writeObject(md.digest());
+		dis.close();
 		
 		System.out.println((String) in.readObject());
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
 	}
 	
-	public void opcao_v() {
+	public static void opcao_v(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + file), md);
+		while (dis.read() != -1) {
+			md = dis.getMessageDigest();
+		}
+		out.writeObject(md.digest());
+		dis.close();
 		
+		File path = new File(mainPath);
+		boolean valid = false;
+		for (File f: path.listFiles()) {
+			if (!valid) {
+				if (f.getName().substring(0, f.getName().lastIndexOf(".")).equals(file.substring(0, file.indexOf("."))+".signed")) {
+					File ff = new File(f.getPath());
+					sendToServer(ff);
+					valid = true;
+				}					
+			}
+		}			
+		
+		boolean ok = (boolean) in.readObject();
+		if (ok) {
+			System.out.println("A verificaÃ§Ã£o da assinatura do ficheiro " + file + " foi bem sucedida");			
+		} else {
+			System.out.println("A assinatura do ficheiro " +  file + " nÃ£o Ã© vÃ¡lida");
+		}
 	}
 	
 	public static void receiveFromServer(File f) throws ClassNotFoundException, IOException {
@@ -215,7 +248,7 @@ public class myAutentClient {
 	
 	public static void receiveSignature(String nameFile) throws IOException, ClassNotFoundException {
 		String nameSig = nameFile + ".signed.user"+userId;
-		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  nameSig);
+		FileOutputStream signature = new FileOutputStream(mainPath +  nameSig);
 		ObjectOutputStream oos = new ObjectOutputStream(signature);
 		byte[] s = (byte[]) in.readObject();
 		oos.writeObject(s);
@@ -234,6 +267,7 @@ public class myAutentClient {
 		while ((n = fBuff.read(buffer, 0, 1024)) > 0) {
 			out.write(buffer,0,n);
 		}
+		out.flush();
 		System.out.println((String) in.readObject());
 	}
 

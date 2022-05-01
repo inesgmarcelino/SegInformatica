@@ -4,4 +4,11 @@ grant codeBase "file:bin/*" {
 	permission java.io.FilePermission "server/-", "read, write, delete";
 	permission java.io.FilePermission "<<ALL FILES>>", "execute";
 	permission java.util.PropertyPermission "*", "read,write";
+	permission java.io.FilePermission "lib", "read";
+	permission java.io.FilePermission "lib/-", "read";
+	permission java.io.FilePermission "lib/bcpkix-jdk18on-171.jar", "read";
+    permission java.io.FilePermission "lib/bcprov-jdk18on-171.jar", "read";
+    permission java.io.FilePermission "lib/bcutil-jdk18on-171.jar", "read";
+	permission java.security.SecurityPermission "getProperty.org.bouncycastle.x509.allow_non-der_tbscert", "read";
+	permission java.util.PropertyPermission "org.bouncycastle.x509.allow_non-der_tbscert", "read";
 };
