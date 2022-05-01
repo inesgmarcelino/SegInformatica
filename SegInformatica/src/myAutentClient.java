@@ -11,10 +11,8 @@ import java.net.Socket;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
 import java.util.HashMap;
 import java.util.Scanner;
-
 import javax.net.ssl.SSLSocketFactory;
 
 public class myAutentClient {
@@ -34,8 +32,8 @@ public class myAutentClient {
 	
 	public static void main(String[] args) {
 		
-		System.setProperty("javax.net.ssl.trustStore","client/truststores/truststore.client");
-        System.setProperty("javax.net.ssl.trustStorePassword","123456");
+		System.setProperty("javax.net.ssl.trustStore", mainPath + "truststores/truststore.client");
+		System.setProperty("javax.net.ssl.trustStorePassword","123456");
 		
 		if(args.length==0) { //sem comandos
 			System.out.println("Não foi escrito nenhum comando");
@@ -58,7 +56,7 @@ public class myAutentClient {
 						port = Integer.parseInt(address[1]);
 						data.put("port", address[1]);
 						
-						//clientSocket = new Socket (host,port);
+//						clientSocket = new Socket (host,port);
 						
 						clientSocket = ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(host, port);
 						
@@ -77,6 +75,7 @@ public class myAutentClient {
 							System.out.println("Inserir password: ");
 							userPwd = auth.nextLine();
 							data.put("password",userPwd);
+							auth.close();
 						}
 						
 						if (args[i].charAt(1) == 'c' && userId != 1) {
@@ -123,7 +122,7 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						out.flush();
-						File f = new File (mainPath + userId + "/" + file);
+						File f = new File (mainPath + file);
 						opcao_d(f);
 					}
 				}
@@ -144,6 +143,14 @@ public class myAutentClient {
 					String[] files = data.get("option_args").split(";");
 					for (String file: files) {
 						opcao_s(file);
+					}
+					out.flush();
+				}
+				
+				if (data.get("option").equals("v")) {
+					String[] files = data.get("option_args").split(";");
+					for (String file: files) {
+						opcao_v(file);
 					}
 					out.flush();
 				}
@@ -173,28 +180,38 @@ public class myAutentClient {
 	}
 	
 	public static void opcao_e(String file) throws IOException, ClassNotFoundException {
-		File f = new File(mainPath + userId + "/" +  file);
+		File f = new File(mainPath + file);
 		sendToServer(f);
-		out.flush();
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
 	}
 	
 	public static void opcao_s(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
 		MessageDigest md = MessageDigest.getInstance("SHA-256");
-		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + userId + "/" + file), md);
+		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + file), md);
 		while (dis.read() != -1) {
 			md = dis.getMessageDigest();
 		}
 		out.writeObject(md.digest());
+		dis.close();
 		
 		System.out.println((String) in.readObject());
 		String name = file.substring(0, file.indexOf("."));
 		receiveSignature(name);
 	}
 	
-	public void opcao_v() {
+	public static void opcao_v(String file) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		DigestInputStream dis = new DigestInputStream( new FileInputStream(mainPath + file), md);
+		while (dis.read() != -1) {
+			md = dis.getMessageDigest();
+		}
+		out.writeObject(md.digest());
+		dis.close();
 		
+		String name = file.substring(0, file.indexOf(".")) + ".signed.user" + userId;
+		File f = new File(mainPath + name);
+		sendToServer(f);
 	}
 	
 	public static void receiveFromServer(File f) throws ClassNotFoundException, IOException {
@@ -215,7 +232,7 @@ public class myAutentClient {
 	
 	public static void receiveSignature(String nameFile) throws IOException, ClassNotFoundException {
 		String nameSig = nameFile + ".signed.user"+userId;
-		FileOutputStream signature = new FileOutputStream(mainPath + userId + "/" +  nameSig);
+		FileOutputStream signature = new FileOutputStream(mainPath +  nameSig);
 		ObjectOutputStream oos = new ObjectOutputStream(signature);
 		byte[] s = (byte[]) in.readObject();
 		oos.writeObject(s);

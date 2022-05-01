@@ -33,15 +33,19 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Scanner;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -123,7 +127,6 @@ public class myAutent {
 				server.startServer();
 			}
 		} catch (IOException | InvalidKeyException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -215,19 +218,19 @@ public class myAutent {
 		if (!mac.exists()) {
 			Scanner in = new Scanner(System.in);
 			System.out.println("Pretende calcular o MAC? (y/n)");
-			String resp = in.next();
-			in.close();
+			String resp = in.nextLine();
 			if (resp.equals("y")) {
 				createMAC(adminPwd, "users.mac");
 				MACPwd = adminPwd;
 			} else {
 				System.exit(-1);
 			}
+//			in.close();
 		}
 	}
 	
 	public void startServer() {
-		System.setProperty("javax.net.ssl.keyStore", "server/keystores/keystore.server");
+		System.setProperty("javax.net.ssl.keyStore", mainPath + "keystores/keystore.server");
 		System.setProperty("javax.net.ssl.keyStorePassword", "123456");
 		
 		ServerSocket servSock = null;
@@ -247,7 +250,7 @@ public class myAutent {
 			MACPwd = adminPwd;
 			mac2.delete();
 			
-			//servSock = new ServerSocket(23456);
+//			servSock = new ServerSocket(23456);
 			
 			servSock = ((SSLServerSocketFactory)SSLServerSocketFactory.getDefault()).createServerSocket(23456);
 
@@ -294,78 +297,80 @@ public class myAutent {
 					data = (HashMap<String, String>) in.readObject();
 					System.out.println(data);
 					clientId = data.get("user");
-					
-					BufferedReader br = usersRegistered();
-					String l = br.readLine();
-					boolean idExists = false;
-					while (l != null) {
-						String[] linha_split = l.split(";");
-						if (clientId.equals(linha_split[0])) {
-							idExists = true;
-							out.writeObject("0");
-							if (checkPwd(linha_split[2], data.get("password"))) {
-								String[] args = data.get("option_args").split(";");
-								
-								if (data.get("option").equals("c")) {
-									opcao_c(args);
+					if (clientId != null) {
+						BufferedReader br = usersRegistered();
+						String l = br.readLine();
+						boolean idExists = false;
+						while (l != null) {
+							String[] linha_split = l.split(";");
+							if (clientId.equals(linha_split[0])) {
+								idExists = true;
+								if (checkPwd(linha_split[2], data.get("password"))) {
+									out.writeObject("0");
+									String[] args = data.get("option_args").split(";");
 									
-								}  else if (data.get("option").equals("d")) {
-									String pwd = getPassword(clientId);
-									PrivateKey priv = getPrivKey(clientId, pwd);
-									for (String arg: args) {
-										out.flush();
-										opcao_d(clientId, arg, priv);
-									}
-									
-								} else if (data.get("option").equals("e")) {
-									List<String> existed = new ArrayList<String>();
-									List<String> created = new ArrayList<String>();
-									
-									String pwd = getPassword(clientId);
-									PrivateKey priv = getPrivKey(clientId, pwd);
-									
-									for (String arg: args) {
-										File f = new File(mainPath + clientId + "/" + arg);
-										if (!f.exists()) {
-											opcao_e(clientId,f, priv);
-											created.add(arg);
-										} else {
-											existed.add(arg);
+									if (data.get("option").equals("c")) {
+										opcao_c(args);
+										
+									}  else if (data.get("option").equals("d")) {
+										String pwd = getPassword(clientId);
+										PrivateKey priv = getPrivKey(clientId, pwd);
+										for (String arg: args) {
+											opcao_d(arg, priv, pwd);
+											out.flush();
 										}
+										
+									} else if (data.get("option").equals("e")) {
+										String pwd = getPassword(clientId);
+										PrivateKey priv = getPrivKey(clientId, pwd);
+										
+										for (String arg: args) {
+											File f = new File(mainPath + clientId + "/" + arg);
+											opcao_e(f, priv, pwd);
+											f.delete();
+											out.flush();
+										}
+										
+										
+									} else if (data.get("option").equals("l")) {		
+										out.writeObject(opcao_l(clientId));
+										
+									} else if (data.get("option").equals("s")) {
+										String pwd = getPassword(clientId);
+										PrivateKey priv = getPrivKey(clientId, pwd);
+										for (String arg: args) {
+											opcao_s(arg, priv);		
+										}
+										out.flush();
+										
 									}
-									out.flush();
 									
-								} else if (data.get("option").equals("l")) {		
-									out.writeObject(opcao_l(clientId));
-									
-								} else if (data.get("option").equals("s")) {
-									String pwd = getPassword(clientId);
-									PrivateKey priv = getPrivKey(clientId, pwd);
-									for (String arg: args) {
-										opcao_s(clientId,arg, priv);		
-									}
-									
-									
-								} else if (data.get("option").equals("v")) {
-									
+								} else {
+									out.writeObject("-1");
+									out.writeObject("Credenciais inválidas!");
 								}
-								
-							} else {
-								out.writeObject("-1");
-								out.writeObject("Credenciais inválidas!");
+								break;
 							}
-							break;
+							l = br.readLine();
 						}
-						l = br.readLine();
+						if (!idExists) {
+							out.writeObject("-1");
+							out.writeObject("Não existe nenhum utilizador com o ID " + clientId);
+						}
+						out.flush();
+						
+					} else {
+						String[] args = data.get("option_args").split(";");
+						if (data.get("option").equals("v")) {
+							for (String arg: args) {
+								opcao_v(arg);
+							}
+							out.flush();
+						}
 					}
-					if (!idExists) {
-						out.writeObject("-1");
-						out.writeObject("Não existe nenhum utilizador com o ID " + clientId);
-					}
-					out.flush();
 					
 					
-				} catch (ClassNotFoundException | NoSuchAlgorithmException | OperatorCreationException | CertificateException | KeyStoreException | UnrecoverableKeyException | InvalidKeyException | SignatureException e) {
+				} catch (ClassNotFoundException | NoSuchAlgorithmException | OperatorCreationException | CertificateException | KeyStoreException | UnrecoverableKeyException | InvalidKeyException | SignatureException | NoSuchPaddingException | IllegalBlockSizeException e) {
 					e.printStackTrace();
 				}
 				out.close();
@@ -381,7 +386,6 @@ public class myAutent {
 			out.writeObject("O utilizador " + args[1] + " com o ID " + args[0] + " vai ser criado");
 			
 			File f = new File(mainPath  +  args[0]);
-			File f2 = new File("./client/" + args[0]);
 			boolean valid = true;
 			
 			BufferedReader br = usersRegistered();
@@ -396,9 +400,8 @@ public class myAutent {
 			
 			String pwd_crypted = encrypt(args[2]);
 			String line = "\r" + args[0] + ";" + args[1] + ";" + pwd_crypted;
-			if (!f.exists() & !f2.exists() & valid) {
+			if (!f.exists() & valid) {
 				f.mkdirs();
-				f2.mkdirs();
 				FileOutputStream outFile = new FileOutputStream(file,true); //users.txt
 				outFile.write(line.getBytes());
 				outFile.close();
@@ -412,9 +415,10 @@ public class myAutent {
 			}
 		}
 		
-		public void opcao_d(String id, String file, PrivateKey pk) throws IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
-			File f = new File(mainPath +  id + "/" + file);
-			sendToClient(id, f);
+		public void opcao_d(String file, PrivateKey pk, String pwd) throws IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException, UnrecoverableKeyException, CertificateException, KeyStoreException, NoSuchPaddingException {
+			File f = new File(mainPath +  clientId + "/" + file);
+			decifrar(f,pwd);
+			sendToClient(clientId, f);
 			
 			byte[] bytes = Files.readAllBytes(Paths.get(f.getPath()));
 			Signature s = signing(bytes,pk);
@@ -422,18 +426,20 @@ public class myAutent {
 			out.writeObject(sign);
 			
 			String name = file.substring(0,file.indexOf("."));
-			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
+			File fs = new File(mainPath + clientId + "/" + name + ".signed.user" + clientId);
 			FileOutputStream signing = new FileOutputStream(fs.getPath());
 			ObjectOutputStream oos = new ObjectOutputStream(signing);
 			oos.writeObject(sign);
 			signing.close();
+			f.delete();
 		}
 		
-		public void opcao_e(String id, File f, PrivateKey pk) 
-				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException {
-			
+		public void opcao_e(File f, PrivateKey pk, String pwd) 
+				throws ClassNotFoundException, IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, InvalidKeyException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException {
+
 			if (!f.exists()) {
-				receiveFromClient(id,f);
+				receiveFromClient(f);
+				cifrar(f,pwd);
 				out.writeObject("O ficheiro " + f.getName() + " foi enviado para o servidor");
 			} else {
 				out.writeObject("O ficheiro " + f.getName() + " já existe no servidor");
@@ -445,7 +451,7 @@ public class myAutent {
 			out.writeObject(sign);
 
 			String name = f.getName().substring(0,f.getName().indexOf("."));
-			File fs = new File(mainPath + id + "/" + name + ".signed.user" + id);
+			File fs = new File(mainPath + clientId + "/" + name + ".signed.user" + clientId);
 			FileOutputStream signing = new FileOutputStream(fs.getPath());
 			ObjectOutputStream oos = new ObjectOutputStream(signing);
 			oos.writeObject(sign);
@@ -469,16 +475,95 @@ public class myAutent {
 			return sb.toString();
 		}
 		
-		public void opcao_s(String id, String arg, PrivateKey pk) throws ClassNotFoundException, IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		public void opcao_s(String file, PrivateKey pk) throws ClassNotFoundException, IOException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 			byte[] hash = (byte[]) in.readObject();
-			out.writeObject("A síntese do ficheiro " + arg + " foi enviada para servidor");
+			out.writeObject("A síntese do ficheiro " + file + " foi enviada para servidor");
 			Signature s = signing(hash,pk);
 			
 			out.writeObject(s.sign());
 		}
 		
-		public void opcao_v() {
+		public void opcao_v(String file) throws ClassNotFoundException, IOException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, CertificateException, KeyStoreException, IllegalBlockSizeException {
+			byte[] hash = (byte[]) in.readObject();
+			out.writeObject("A síntese do ficheiro " + file + " foi enviada para servidor");
 			
+			String name = (String) in.readObject();
+			File f = new File(mainPath + name);
+//			receiveFromClient(f);
+			
+			FileInputStream inFile = new FileInputStream(f);
+			InputStreamReader reader = new InputStreamReader(inFile);
+			BufferedReader br = new BufferedReader(reader);
+			String l = br.readLine();
+			
+			//falta a verificação
+		}
+		
+		public void cifrar(File f, String pwd) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException, CertificateException, KeyStoreException, IllegalBlockSizeException {
+			KeyGenerator kg = KeyGenerator.getInstance("AES");
+			kg.init(128);
+			SecretKey secret = kg.generateKey();
+			
+			Cipher c = Cipher.getInstance("AES");
+			c.init(Cipher.ENCRYPT_MODE, secret);
+			
+			FileInputStream fis = new FileInputStream(mainPath + clientId + "/" + f.getName());
+			FileOutputStream fos = new FileOutputStream(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".cif");
+			
+			CipherOutputStream cos = new CipherOutputStream(fos,c);
+			byte[] bytes = new byte[1024];
+			
+			int x = fis.read(bytes);
+			while (x != -1) {
+				cos.write(bytes, 0, x);
+				x = fis.read(bytes);
+			}
+			cos.close();
+			fos.close();
+			
+			FileInputStream kFile = new FileInputStream(mainPath + clientId + "/" +  clientId + ".keystore");
+			KeyStore kstore = KeyStore.getInstance("PKCS12");
+			kstore.load(kFile, pwd.toCharArray());
+			Certificate cert = kstore.getCertificate("user"+clientId);
+			
+			Cipher c2 = Cipher.getInstance("RSA");
+			c2.init(Cipher.WRAP_MODE, cert);
+			byte[] keyB = c2.wrap(secret);
+			
+			FileOutputStream kos = new FileOutputStream(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".keywrapped");
+			kos.write(keyB);
+			kos.close();
+		}
+		
+		public void decifrar(File f, String pwd) throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException, UnrecoverableKeyException, NoSuchPaddingException, InvalidKeyException {
+			FileInputStream kos = new FileInputStream(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".keywrapped");
+			byte[] keycip = new byte[256];
+			kos.read(keycip);
+			
+			FileInputStream kFile = new FileInputStream(mainPath + clientId + "/" +  clientId + ".keystore");
+			KeyStore kstore = KeyStore.getInstance("PKCS12");
+			kstore.load(kFile, pwd.toCharArray());
+			Key pk = kstore.getKey("user"+clientId, pwd.toCharArray());
+			
+			Cipher c2 = Cipher.getInstance("RSA");
+			c2.init(Cipher.UNWRAP_MODE, pk);
+			Key aes = c2.unwrap(keycip, "AES", Cipher.SECRET_KEY);
+			
+			Cipher c = Cipher.getInstance("AES");
+			c.init(Cipher.DECRYPT_MODE, aes);
+			
+			FileInputStream fis = new FileInputStream(mainPath + clientId + "/" + f.getName().substring(0, f.getName().indexOf(".")) + ".cif");
+			FileOutputStream fos = new FileOutputStream(f.getPath());
+			CipherInputStream cis = new CipherInputStream(fis,c);
+			byte[] bytes = new byte[2048];
+			int x = cis.read(bytes);
+			while (x != -1) {
+				fos.write(bytes, 0, x);
+				x = cis.read(bytes);
+			}
+			cis.close();
+			fos.close();
+			fis.close();
 		}
 		
 		public void createKeystore(String id, String pwd) 
@@ -548,7 +633,7 @@ public class myAutent {
 			return priv;
 		}
 		
-		public void receiveFromClient(String id, File f) throws ClassNotFoundException, IOException {
+		public void receiveFromClient(File f) throws ClassNotFoundException, IOException {
 			FileOutputStream fclient = new FileOutputStream(f.getPath());
 			BufferedOutputStream fBuff = new BufferedOutputStream(fclient);
 			Long fSize = (Long) in.readObject();
