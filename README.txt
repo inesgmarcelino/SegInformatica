@@ -1,6 +1,12 @@
 # ProjSInf
 
-## Comandos Entrega 1:
+## Notas Entrega 2:
+
+- Não conseguimos implementar a verificação das assinaturas
+- Policies nao estao a correr corretamente e dao origem a erros na execucao do programa
+- Programa funciona se correr dentro do Eclipse, verificamos que existem inconsistencias caso seja utilizado o terminal (não conseguimos achar a fonte do problema) 
+
+## Comandos:
 
 java myAutentClient -u 1 -a ip:23456 -p badpwd -c 2 Jose test
 java myAutentClient -u 2 -a ip:23456 -p test -e test.txt
